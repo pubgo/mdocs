@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.10.0](https://github.com/k1LoW/mo/compare/v0.9.0...v0.10.0) - 2026-03-02
+### New Features 🎉
+- feat: add drag-and-drop file reordering in sidebar by @k1LoW in https://github.com/k1LoW/mo/pull/41
+- feat: add move file to another group via kebab menu by @k1LoW in https://github.com/k1LoW/mo/pull/42
+- feat: add flat/tree view toggle for sidebar by @k1LoW in https://github.com/k1LoW/mo/pull/43
+
 ## [v0.9.0](https://github.com/k1LoW/mo/compare/v0.8.0...v0.9.0) - 2026-03-02
 ### New Features 🎉
 - feat: add file remove feature by @k1LoW in https://github.com/k1LoW/mo/pull/36
