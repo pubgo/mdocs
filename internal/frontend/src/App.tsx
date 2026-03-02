@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { MarkdownViewer } from "./components/MarkdownViewer";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { GroupDropdown } from "./components/GroupDropdown";
+import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { RestartButton } from "./components/RestartButton";
 import { TocPanel } from "./components/TocPanel";
 import type { TocHeading } from "./components/TocPanel";
@@ -17,6 +18,8 @@ import {
   groupToPath,
 } from "./utils/groups";
 
+const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
+
 export function App() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroup] = useState<string>("default");
@@ -25,6 +28,13 @@ export function App() {
   const [tocOpen, setTocOpen] = useState(false);
   const [headings, setHeadings] = useState<TocHeading[]>([]);
   const [contentRevision, setContentRevision] = useState(0);
+  const [viewModes, setViewModes] = useState<Record<string, ViewMode>>(() => {
+    try {
+      const stored = localStorage.getItem(VIEWMODE_STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch { /* ignore */ }
+    return {};
+  });
   const knownFileIds = useRef<Set<number>>(new Set());
   const initialFileId = useRef<number | null>(
     parseFileIdFromSearch(window.location.search),
@@ -125,6 +135,20 @@ export function App() {
     },
   });
 
+  const currentViewMode: ViewMode = viewModes[activeGroup] ?? "flat";
+
+  useEffect(() => {
+    localStorage.setItem(VIEWMODE_STORAGE_KEY, JSON.stringify(viewModes));
+  }, [viewModes]);
+
+  const handleViewModeToggle = useCallback(() => {
+    setViewModes((prev) => {
+      const current = prev[activeGroup] ?? "flat";
+      const nextMode: ViewMode = current === "flat" ? "tree" : "flat";
+      return { ...prev, [activeGroup]: nextMode };
+    });
+  }, [activeGroup]);
+
   const handleGroupChange = (name: string) => {
     setActiveGroup(name);
     setActiveFileId(null);
@@ -194,6 +218,7 @@ export function App() {
           activeGroup={activeGroup}
           onGroupChange={handleGroupChange}
         />
+        <ViewModeToggle viewMode={currentViewMode} onToggle={handleViewModeToggle} />
         <div className="ml-auto">
           <ThemeToggle />
         </div>
@@ -205,6 +230,7 @@ export function App() {
           activeFileId={activeFileId}
           onFileSelect={setActiveFileId}
           onFilesReorder={handleFilesReorder}
+          viewMode={currentViewMode}
         />}
         <main className="flex-1 flex flex-col overflow-hidden">
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 bg-gh-bg">
