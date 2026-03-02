@@ -80,6 +80,15 @@ The sidebar supports flat and tree view modes. Flat view shows file names only, 
 |------|------|
 | ![Flat view](images/sidebar-flat.png) | ![Tree view](images/sidebar-tree.png) |
 
+### Closing the server
+
+Use the `--close` flag to gracefully shut down a running `mo` server:
+
+``` console
+$ mo --close            # Shut down the server on the default port
+$ mo --close -p 6276    # Shut down the server on a specific port
+```
+
 ### Server restart
 
 Click the restart button (bottom-right corner) to restart the `mo` server process. The current session — all open files and groups — is preserved across the restart. This is useful when you have updated the `mo` binary and want to pick up the new version without re-opening your files.
@@ -92,6 +101,7 @@ Click the restart button (bottom-right corner) to restart the `mo` server proces
 | `--port` | `-p` | `6275` | Server port |
 | `--open` | | | Always open browser |
 | `--no-open` | | | Never open browser |
+| `--close` | | | Shut down the running server |
 
 ## Build
 
