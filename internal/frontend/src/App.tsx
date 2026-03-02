@@ -9,7 +9,12 @@ import { useSSE } from "./hooks/useSSE";
 import { useActiveHeading } from "./hooks/useActiveHeading";
 import type { Group } from "./hooks/useApi";
 import { fetchGroups, removeFile } from "./hooks/useApi";
-import { allFileIds, parseGroupFromPath } from "./utils/groups";
+import {
+  allFileIds,
+  parseGroupFromPath,
+  parseFileIdFromSearch,
+  groupToPath,
+} from "./utils/groups";
 
 export function App() {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -20,6 +25,9 @@ export function App() {
   const [headings, setHeadings] = useState<TocHeading[]>([]);
   const [contentRevision, setContentRevision] = useState(0);
   const knownFileIds = useRef<Set<number>>(new Set());
+  const initialFileId = useRef<number | null>(
+    parseFileIdFromSearch(window.location.search),
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const loadGroups = useCallback(async () => {
@@ -36,7 +44,7 @@ export function App() {
 
       setGroups(data);
 
-      if (added.length > 0) {
+      if (added.length > 0 && initialFileId.current == null) {
         // Only auto-select if the new file belongs to the current active group
         setActiveGroup((currentGroup) => {
           const group = data.find((g) => g.name === currentGroup);
@@ -72,6 +80,15 @@ export function App() {
     if (!group || group.files.length === 0) {
       setActiveFileId(null);
       return;
+    }
+    if (initialFileId.current != null) {
+      const requestedId = initialFileId.current;
+      initialFileId.current = null;
+      window.history.replaceState(null, "", groupToPath(activeGroup));
+      if (group.files.some((f) => f.id === requestedId)) {
+        setActiveFileId(requestedId);
+        return;
+      }
     }
     setActiveFileId((prev) => {
       const stillExists = group.files.some((f) => f.id === prev);
@@ -109,8 +126,7 @@ export function App() {
   const handleGroupChange = (name: string) => {
     setActiveGroup(name);
     setActiveFileId(null);
-    const url = name === "default" ? "/" : `/${name}`;
-    window.history.pushState(null, "", url);
+    window.history.pushState(null, "", groupToPath(name));
   };
 
   const handleFileOpened = useCallback((fileId: number) => {

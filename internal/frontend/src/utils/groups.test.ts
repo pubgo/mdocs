@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { allFileIds, parseGroupFromPath } from "./groups";
+import {
+  allFileIds,
+  parseGroupFromPath,
+  groupToPath,
+  buildFileUrl,
+  parseFileIdFromSearch,
+} from "./groups";
 import type { Group } from "../hooks/useApi";
 
 describe("allFileIds", () => {
@@ -68,5 +74,55 @@ describe("parseGroupFromPath", () => {
 
   it("handles path without leading slash", () => {
     expect(parseGroupFromPath("notes")).toBe("notes");
+  });
+});
+
+describe("groupToPath", () => {
+  it("returns / for default group", () => {
+    expect(groupToPath("default")).toBe("/");
+  });
+
+  it("returns /name for named group", () => {
+    expect(groupToPath("design")).toBe("/design");
+  });
+});
+
+describe("buildFileUrl", () => {
+  it("builds URL for default group", () => {
+    expect(buildFileUrl("default", 1)).toBe("/?file=1");
+  });
+
+  it("builds URL for named group", () => {
+    expect(buildFileUrl("design", 5)).toBe("/design?file=5");
+  });
+});
+
+describe("parseFileIdFromSearch", () => {
+  it("returns null for empty search", () => {
+    expect(parseFileIdFromSearch("")).toBeNull();
+  });
+
+  it("parses file id from search string", () => {
+    expect(parseFileIdFromSearch("?file=2")).toBe(2);
+  });
+
+  it("returns null for non-numeric value", () => {
+    expect(parseFileIdFromSearch("?file=abc")).toBeNull();
+  });
+
+  it("returns null when file param is missing", () => {
+    expect(parseFileIdFromSearch("?other=1")).toBeNull();
+  });
+
+  it("handles search with multiple params", () => {
+    expect(parseFileIdFromSearch("?foo=bar&file=10&baz=1")).toBe(10);
+  });
+
+  it("returns null for zero", () => {
+    expect(parseFileIdFromSearch("?file=0")).toBeNull();
+  });
+
+  it("returns null for negative value", () => {
+    expect(parseFileIdFromSearch("?file=-3")).toBeNull();
   });
 });
