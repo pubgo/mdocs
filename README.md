@@ -80,13 +80,13 @@ The sidebar supports flat and tree view modes. Flat view shows file names only, 
 |------|------|
 | ![Flat view](images/sidebar-flat.png) | ![Tree view](images/sidebar-tree.png) |
 
-### Closing the server
+### Shutting down the server
 
-Use the `--close` flag to gracefully shut down a running `mo` server:
+Use the `--shutdown` flag to gracefully shut down a running `mo` server:
 
 ``` console
-$ mo --close            # Shut down the server on the default port
-$ mo --close -p 6276    # Shut down the server on a specific port
+$ mo --shutdown            # Shut down the server on the default port
+$ mo --shutdown -p 6276    # Shut down the server on a specific port
 ```
 
 ### Server restart
@@ -101,7 +101,7 @@ Click the restart button (bottom-right corner) to restart the `mo` server proces
 | `--port` | `-p` | `6275` | Server port |
 | `--open` | | | Always open browser |
 | `--no-open` | | | Never open browser |
-| `--close` | | | Shut down the running server |
+| `--shutdown` | | | Shut down the running server |
 
 ## Build
 

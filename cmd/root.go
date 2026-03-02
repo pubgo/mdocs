@@ -29,7 +29,7 @@ var (
 	open        bool
 	noOpen      bool
 	restore     string
-	closeServer bool
+	shutdownServer bool
 )
 
 var rootCmd = &cobra.Command{
@@ -95,7 +95,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&open, "open", false, "Always open browser (even when adding to existing group)")
 	rootCmd.Flags().BoolVar(&noOpen, "no-open", false, "Do not open browser automatically")
 	rootCmd.MarkFlagsMutuallyExclusive("open", "no-open")
-	rootCmd.Flags().BoolVar(&closeServer, "close", false, "Shut down the running mo server on the specified port")
+	rootCmd.Flags().BoolVar(&shutdownServer, "shutdown", false, "Shut down the running mo server on the specified port")
 	rootCmd.Flags().StringVar(&restore, "restore", "", "Restore state from file (internal use)")
 	rootCmd.Flags().MarkHidden("restore") //nolint:errcheck
 }
@@ -110,8 +110,8 @@ func run(cmd *cobra.Command, args []string) error {
 
 	addr := fmt.Sprintf("localhost:%d", port)
 
-	if closeServer {
-		return doClose(addr)
+	if shutdownServer {
+		return doShutdown(addr)
 	}
 
 	if restore != "" {
@@ -224,7 +224,7 @@ func tryAddToExisting(addr string, files []string) bool {
 	return true
 }
 
-func doClose(addr string) error {
+func doShutdown(addr string) error {
 	client := &http.Client{Timeout: 2 * time.Second}
 
 	resp, err := client.Get(fmt.Sprintf("http://%s/_/api/groups", addr))
