@@ -109,11 +109,14 @@ export function App() {
     });
   }, [groups, activeGroup]);
 
+  const activeFileName = useMemo(() =>
+    groups.find((g) => g.name === activeGroup)?.files.find((f) => f.id === activeFileId)?.name ?? "",
+    [groups, activeGroup, activeFileId],
+  );
+
   useEffect(() => {
-    const group = groups.find((g) => g.name === activeGroup);
-    const file = group?.files.find((f) => f.id === activeFileId);
-    document.title = file ? file.name : "mo";
-  }, [groups, activeGroup, activeFileId]);
+    document.title = activeFileName || "mo";
+  }, [activeFileName]);
 
   // Auto open/close sidebar based on file count in active group
   useEffect(() => {
@@ -237,7 +240,7 @@ export function App() {
             {activeFileId != null ? (
               <MarkdownViewer
                 fileId={activeFileId}
-                fileName={groups.find((g) => g.name === activeGroup)?.files.find((f) => f.id === activeFileId)?.name ?? ""}
+                fileName={activeFileName}
                 revision={contentRevision}
                 onFileOpened={handleFileOpened}
                 onHeadingsChange={setHeadings}
