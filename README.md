@@ -77,6 +77,18 @@ $ mo notes.md --target notes      # Opens at http://localhost:6275/notes
 
 ![Group view](images/groups.png)
 
+### Glob pattern watching
+
+Use `--watch` (`-w`) to specify glob patterns. Matching files are opened automatically, and watched directories are monitored for new files.
+
+``` console
+$ mo --watch '**/*.md'                          # Watch and open all .md files recursively
+$ mo --watch 'docs/**/*.md' --target docs       # Watch docs/ tree in "docs" group
+$ mo --watch '*.md' --watch 'docs/**/*.md'      # Multiple patterns
+```
+
+`--watch` cannot be combined with file arguments. The `**` pattern matches directories recursively.
+
 ### Sidebar view modes
 
 The sidebar supports flat and tree view modes. Flat view shows file names only, while tree view displays the directory hierarchy.
@@ -122,6 +134,7 @@ Click the <img src="images/icons/restart.svg" width="16" height="16" alt="restar
 | `--open` | | | Always open browser |
 | `--no-open` | | | Never open browser |
 | `--status` | | | Show all running mo servers |
+| `--watch` | `-w` | | Glob pattern to watch for matching files (repeatable) |
 | `--shutdown` | | | Shut down the running mo server |
 | `--foreground` | | | Run mo server in foreground |
 
