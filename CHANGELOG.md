@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.13.0](https://github.com/k1LoW/mo/compare/v0.12.0...v0.13.0) - 2026-03-05
+### New Features 🎉
+- feat: add `--watch` (`-w`) flag for glob pattern directory watching by @k1LoW in https://github.com/k1LoW/mo/pull/64
+
 ## [v0.12.0](https://github.com/k1LoW/mo/compare/v0.11.4...v0.12.0) - 2026-03-04
 ### New Features 🎉
 - feat: support YAML frontmatter in Markdown files by @k1LoW in https://github.com/k1LoW/mo/pull/60
