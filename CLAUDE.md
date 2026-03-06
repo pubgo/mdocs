@@ -45,7 +45,10 @@ make ci
 - `--target` / `-t` — Tab group name (default: `"default"`)
 - `--open` — Always open browser
 - `--no-open` — Never open browser
+- `--watch` / `-w` — Glob pattern to watch for matching files (repeatable)
+- `--unwatch` — Remove a watched glob pattern (repeatable)
 - `--status` — Show status of all running mo servers
+- `--shutdown` — Shut down the running mo server
 - `--foreground` — Run mo server in foreground (do not background)
 
 ## Architecture
@@ -71,13 +74,14 @@ make ci
 
 ## Key Design Patterns
 
-- **Single instance**: CLI probes `/_/api/groups` on the target port. If already running, pushes files via `POST /_/api/files` and exits.
+- **Single instance**: CLI probes `/_/api/status` on the target port via `probeServer()`. If already running, pushes files via `POST /_/api/files` and exits.
 - **File IDs**: Files get sequential integer IDs server-side. The frontend primarily references files by ID. Absolute paths are available via `FileEntry.path` for display (e.g., tooltip, tree view).
 - **Tab groups**: Files are organized into named groups. Group name maps to the URL path (e.g., `/design`). Default group name is `"default"`.
 - **Live-reload via SSE**: fsnotify watches files; `file-changed` events trigger frontend to re-fetch content by file ID.
 - **Sidebar view modes**: Flat (default, with drag-and-drop reorder via dnd-kit) and tree (hierarchical directory view). View mode is persisted per-group in localStorage. Collapsed directory state is managed inside `TreeView` and also persisted per-group.
 - **Resizable panels**: Both `Sidebar.tsx` (left) and `TocPanel.tsx` (right) use the same drag-to-resize pattern with localStorage persistence. Left sidebar uses `e.clientX`, right panel uses `window.innerWidth - e.clientX`.
 - **Toolbar buttons in content area**: The toolbar column (ToC + Raw toggles) lives inside `MarkdownViewer.tsx`, positioned with `shrink-0 flex flex-col gap-2 -mr-4 -mt-4` to align with the header.
+- **Glob pattern watching**: `--watch` registers glob patterns that are expanded to matching files and monitored for new files via fsnotify directory watches. Patterns are stored with reference-counted directory watches (`watchedDirs map[string]int`). `--unwatch` removes patterns and decrements watch ref counts. Groups persist as long as they have files or patterns.
 - **localStorage conventions**: All keys use `mo-` prefix (e.g., `mo-sidebar-width`, `mo-sidebar-viewmode`, `mo-sidebar-tree-collapsed`, `mo-theme`). Read patterns use `try/catch` around `JSON.parse` with fallback defaults.
 
 ## API Conventions
@@ -92,6 +96,9 @@ Key endpoints:
 - `PUT /_/api/files/{id}/group` — Move file to another group
 - `PUT /_/api/reorder` — Reorder files in a group (group name in body)
 - `POST /_/api/files/open` — Open relative file link
+- `POST /_/api/patterns` — Add glob watch pattern
+- `DELETE /_/api/patterns` — Remove glob watch pattern
+- `GET /_/api/status` — Server status (version, pid, groups with patterns)
 - `GET /_/events` — SSE (event types: `update`, `file-changed`, `restart`)
 
 ## CI/CD
