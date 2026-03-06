@@ -14,11 +14,25 @@ export function useSSE(callbacks: SSECallbacks) {
     let es: EventSource | null = null;
     let retryDelay = 1000;
     const maxRetryDelay = 30000;
+    let serverPid: number | null = null;
 
     function connect() {
       if (disposed) return;
 
       es = new EventSource("/_/events");
+
+      es.addEventListener("started", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (serverPid !== null && data.pid !== serverPid) {
+            window.location.reload();
+            return;
+          }
+          serverPid = data.pid;
+        } catch {
+          // ignore
+        }
+      });
 
       es.addEventListener("update", () => {
         callbacksRef.current.onUpdate();
