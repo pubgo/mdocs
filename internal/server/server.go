@@ -1039,6 +1039,7 @@ func handleRestart(state *State) http.HandlerFunc {
 		select {
 		case state.restartCh <- restoreFile:
 		default:
+			os.Remove(restoreFile) //nolint:errcheck
 		}
 	}
 }

@@ -290,8 +290,8 @@ func TestHandleShutdown(t *testing.T) {
 func TestHandleRestart(t *testing.T) {
 	t.Run("returns 202 and signals restartCh", func(t *testing.T) {
 		s := newTestState(t)
-		s.groups["default"] = &Group{
-			Name:  "default",
+		s.groups[DefaultGroup] = &Group{
+			Name:  DefaultGroup,
 			Files: []*FileEntry{{ID: 1, Name: "a.md", Path: "/a.md"}},
 		}
 		handler := NewHandler(s)
@@ -319,8 +319,8 @@ func TestHandleRestart(t *testing.T) {
 
 	t.Run("does not block on duplicate signal", func(t *testing.T) {
 		s := newTestState(t)
-		s.groups["default"] = &Group{
-			Name:  "default",
+		s.groups[DefaultGroup] = &Group{
+			Name:  DefaultGroup,
 			Files: []*FileEntry{{ID: 1, Name: "a.md", Path: "/a.md"}},
 		}
 		handler := NewHandler(s)
@@ -332,6 +332,15 @@ func TestHandleRestart(t *testing.T) {
 			if rec.Code != http.StatusAccepted {
 				t.Fatalf("call %d: got status %d, want %d", i+1, rec.Code, http.StatusAccepted)
 			}
+		}
+
+		// Drain restartCh and clean up the restore file from the first request
+		select {
+		case restoreFile := <-s.RestartCh():
+			t.Cleanup(func() {
+				_ = os.Remove(restoreFile) //nostyle:handlerrors
+			})
+		default:
 		}
 	})
 }
