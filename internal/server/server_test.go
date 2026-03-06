@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -762,7 +763,10 @@ func TestHandleSSE_StartedEvent(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/_/events", nil).WithContext(ctx)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		handler.ServeHTTP(rec, req)
 		pw.Close()
 	}()
@@ -778,6 +782,9 @@ func TestHandleSSE_StartedEvent(t *testing.T) {
 			break
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("scanner error while reading SSE stream: %v", err)
+	}
 
 	if eventLine != "event: started" {
 		t.Fatalf("got event line %q, want %q", eventLine, "event: started")
@@ -789,6 +796,7 @@ func TestHandleSSE_StartedEvent(t *testing.T) {
 	}
 
 	cancel()
+	wg.Wait()
 }
 
 // flushRecorder implements http.ResponseWriter and http.Flusher,
