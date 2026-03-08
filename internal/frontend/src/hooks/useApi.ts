@@ -74,15 +74,6 @@ export async function moveFile(id: string, group: string): Promise<void> {
   }
 }
 
-export async function addFile(path: string, group: string): Promise<void> {
-  const res = await fetch("/_/api/files", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, group }),
-  });
-  if (!res.ok) throw new Error("Failed to add file");
-}
-
 export async function uploadFile(name: string, content: string, group: string): Promise<void> {
   const res = await fetch("/_/api/files/upload", {
     method: "POST",

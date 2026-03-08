@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchGroups, fetchFileContent, openRelativeFile, reorderFiles, moveFile, addFile, uploadFile } from "./useApi";
+import { fetchGroups, fetchFileContent, openRelativeFile, reorderFiles, moveFile, uploadFile } from "./useApi";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -147,25 +147,6 @@ describe("moveFile", () => {
     }));
 
     await expect(moveFile("aaa11111", "docs")).rejects.toThrow("Failed to move file");
-  });
-});
-
-describe("addFile", () => {
-  it("sends POST with correct body", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
-
-    await addFile("/tmp/test.md", "default");
-    expect(fetch).toHaveBeenCalledWith("/_/api/files", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/tmp/test.md", group: "default" }),
-    });
-  });
-
-  it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400 }));
-
-    await expect(addFile("/missing.md", "default")).rejects.toThrow("Failed to add file");
   });
 });
 

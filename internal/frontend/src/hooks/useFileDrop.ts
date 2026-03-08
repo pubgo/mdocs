@@ -1,19 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { addFile, uploadFile } from "./useApi";
-
-export function extractFilePaths(dataTransfer: DataTransfer): string[] {
-  // Try each data type that may contain file:// URIs
-  for (const type of ["text/uri-list", "text/x-moz-url"]) {
-    const data = dataTransfer.getData(type);
-    if (data) {
-      return data
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith("file://"))
-        .map((uri) => decodeURIComponent(new URL(uri).pathname));
-    }
-  }
-  return [];
-}
+import { uploadFile } from "./useApi";
 
 export function isMarkdown(name: string): boolean {
   const lower = name.toLowerCase();
@@ -59,15 +45,6 @@ export function useFileDrop(activeGroup: string): { isDragging: boolean } {
 
       if (!e.dataTransfer) return;
 
-      // Pattern 1: file:// URI available (Firefox)
-      const paths = extractFilePaths(e.dataTransfer);
-      if (paths.length > 0) {
-        const mdPaths = paths.filter(isMarkdown);
-        await Promise.all(mdPaths.map((p) => addFile(p, activeGroup).catch(() => {})));
-        return;
-      }
-
-      // Pattern 2: File objects only (Chrome/Edge) - upload content
       const fileList = e.dataTransfer.files;
       const uploads: Promise<void>[] = [];
       for (let i = 0; i < fileList.length; i++) {
