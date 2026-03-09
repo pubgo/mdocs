@@ -32,7 +32,7 @@ describe("useScrollRestoration", () => {
       const container = makeContainer(400);
       const heading = addHeading("section-3", 120);
 
-      const { result, rerender } = renderHook(
+      const { result } = renderHook(
         ({ sc, headingId, fileId }) => useScrollRestoration(sc, headingId, fileId),
         { initialProps: { sc: container as HTMLElement | null, headingId: "section-3" as string | null, fileId: "abc" as string | null } },
       );
