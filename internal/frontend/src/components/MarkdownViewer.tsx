@@ -55,7 +55,10 @@ function cleanupMermaidErrors() {
   document.querySelectorAll("[id^='dmermaid-']").forEach((el) => el.remove());
 }
 
-async function renderMermaid(code: string): Promise<string> {
+async function renderMermaid(
+  code: string,
+  width?: number,
+): Promise<string> {
   let resolve: (svg: string) => void;
   let reject: (err: unknown) => void;
   const result = new Promise<string>((res, rej) => {
@@ -69,6 +72,7 @@ async function renderMermaid(code: string): Promise<string> {
     container.style.position = "absolute";
     container.style.left = "-9999px";
     container.style.top = "-9999px";
+    container.style.width = `${width ?? 800}px`;
     document.body.appendChild(container);
     try {
       const { svg } = await mermaid.render(id, code, container);
@@ -86,14 +90,16 @@ async function renderMermaid(code: string): Promise<string> {
 
 export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
+    const width = containerRef.current?.offsetWidth;
 
     ensureMermaidInit();
     mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
 
-    renderMermaid(code)
+    renderMermaid(code, width)
       .then((renderedSvg) => {
         if (!cancelled) setSvg(renderedSvg);
       })
@@ -109,8 +115,9 @@ export function MermaidBlock({ code }: { code: string }) {
   // Re-render on theme change
   useEffect(() => {
     const observer = new MutationObserver(() => {
+      const width = containerRef.current?.offsetWidth;
       mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
-      renderMermaid(code)
+      renderMermaid(code, width)
         .then((renderedSvg) => setSvg(renderedSvg))
         .catch(() => {});
     });
@@ -123,15 +130,18 @@ export function MermaidBlock({ code }: { code: string }) {
 
   if (svg) {
     return (
-      <div className="relative group">
-        <div dangerouslySetInnerHTML={{ __html: svg }} />
+      <div ref={containerRef} className="relative group">
+        <div
+          className="overflow-x-auto"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
         <MermaidImageCopyButton svg={svg} />
         <CodeBlockCopyButton code={code} themed />
       </div>
     );
   }
   return (
-    <div className="relative group">
+    <div ref={containerRef} className="relative group">
       <pre>
         <code>{code}</code>
       </pre>
