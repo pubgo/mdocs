@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.18.0](https://github.com/k1LoW/mo/compare/v0.17.0...v0.18.0) - 2026-03-10
+### New Features 🎉
+- feat: add wide/narrow layout toggle by @k1LoW in https://github.com/k1LoW/mo/pull/101
+### Other Changes
+- fix: add accessibility attributes to all toggle buttons by @k1LoW in https://github.com/k1LoW/mo/pull/102
+
 ## [v0.17.0](https://github.com/k1LoW/mo/compare/v0.16.3...v0.17.0) - 2026-03-10
 ### New Features 🎉
 - Proposal: add --bind flag to specify listen address by @110y in https://github.com/k1LoW/mo/pull/96
