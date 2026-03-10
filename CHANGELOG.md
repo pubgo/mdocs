@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.18.1](https://github.com/k1LoW/mo/compare/v0.18.0...v0.18.1) - 2026-03-10
+### Other Changes
+- feat: add --skip-bind-address-confirmation flag to bypass non-loopback bind prompt by @110y in https://github.com/k1LoW/mo/pull/103
+- fix: rename --skip-bind-address-confirmation to --dangerously-allow-remote-access by @k1LoW in https://github.com/k1LoW/mo/pull/105
+
 ## [v0.18.0](https://github.com/k1LoW/mo/compare/v0.17.0...v0.18.0) - 2026-03-10
 ### New Features 🎉
 - feat: add wide/narrow layout toggle by @k1LoW in https://github.com/k1LoW/mo/pull/101
