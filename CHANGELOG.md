@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.16.3](https://github.com/k1LoW/mo/compare/v0.16.2...v0.16.3) - 2026-03-10
+### Fix bug 🐛
+- fix: render Mermaid charts using actual container width by @k1LoW in https://github.com/k1LoW/mo/pull/95
+### Other Changes
+- refactor: replace eslint with oxlint/oxfmt by @k1LoW in https://github.com/k1LoW/mo/pull/93
+
 ## [v0.16.2](https://github.com/k1LoW/mo/compare/v0.16.1...v0.16.2) - 2026-03-09
 ### Fix bug 🐛
 - Remove stale files when a watched directory is moved by @110y in https://github.com/k1LoW/mo/pull/91
