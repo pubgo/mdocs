@@ -56,10 +56,7 @@ export function stripMdxSyntax(content: string): string {
     }
 
     // Escape JSX tags (uppercase first letter) to prevent rehype-raw from processing them
-    const escaped = line.replace(
-      /<(\/?)([A-Z][A-Za-z0-9.]*)/g,
-      "&lt;$1$2",
-    );
+    const escaped = line.replace(/<(\/?)([A-Z][A-Za-z0-9.]*)/g, "&lt;$1$2");
     result.push(escaped);
   }
 

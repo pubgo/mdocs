@@ -49,15 +49,11 @@ export function buildTree(files: FileEntry[]): TreeNode {
     let current = root;
 
     for (const segment of dirParts) {
-      let child = current.children.find(
-        (c) => c.file == null && c.name === segment,
-      );
+      let child = current.children.find((c) => c.file == null && c.name === segment);
       if (!child) {
         child = {
           name: segment,
-          fullPath: current.fullPath
-            ? `${current.fullPath}/${segment}`
-            : segment,
+          fullPath: current.fullPath ? `${current.fullPath}/${segment}` : segment,
           children: [],
           file: null,
         };
@@ -113,11 +109,7 @@ function collapseSingleChild(node: TreeNode): void {
   for (let i = 0; i < node.children.length; i++) {
     let child = node.children[i];
     // Collapse chain: directory with exactly one child that is also a directory
-    while (
-      child.file == null &&
-      child.children.length === 1 &&
-      child.children[0].file == null
-    ) {
+    while (child.file == null && child.children.length === 1 && child.children[0].file == null) {
       const grandchild = child.children[0];
       child = {
         name: `${child.name}/${grandchild.name}`,

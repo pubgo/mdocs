@@ -28,9 +28,7 @@ describe("GroupDropdown", () => {
   });
 
   it("renders group name without dropdown for a single non-default group", () => {
-    render(
-      <GroupDropdown groups={[docsGroup]} activeGroup="docs" onGroupChange={() => {}} />,
-    );
+    render(<GroupDropdown groups={[docsGroup]} activeGroup="docs" onGroupChange={() => {}} />);
     expect(screen.getByText("docs")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

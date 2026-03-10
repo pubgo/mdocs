@@ -96,21 +96,15 @@ describe("resolveImageSrc", () => {
   });
 
   it("rewrites nested relative src", () => {
-    expect(resolveImageSrc("assets/photo.jpg", "e")).toBe(
-      "/_/api/files/e/raw/assets/photo.jpg",
-    );
+    expect(resolveImageSrc("assets/photo.jpg", "e")).toBe("/_/api/files/e/raw/assets/photo.jpg");
   });
 
   it("passes through http:// URLs", () => {
-    expect(resolveImageSrc("http://example.com/img.png", "a")).toBe(
-      "http://example.com/img.png",
-    );
+    expect(resolveImageSrc("http://example.com/img.png", "a")).toBe("http://example.com/img.png");
   });
 
   it("passes through https:// URLs", () => {
-    expect(resolveImageSrc("https://example.com/img.png", "a")).toBe(
-      "https://example.com/img.png",
-    );
+    expect(resolveImageSrc("https://example.com/img.png", "a")).toBe("https://example.com/img.png");
   });
 
   it("returns undefined for undefined src", () => {

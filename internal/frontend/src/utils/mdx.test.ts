@@ -13,7 +13,7 @@ describe("stripMdxSyntax", () => {
   });
 
   it("preserves import/export inside code blocks", () => {
-    const input = "```js\nimport React from \"react\";\nexport default App;\n```";
+    const input = '```js\nimport React from "react";\nexport default App;\n```';
     expect(stripMdxSyntax(input)).toBe(input);
   });
 
@@ -83,29 +83,24 @@ describe("stripMdxSyntax", () => {
   });
 
   it("preserves code blocks with tilde fences", () => {
-    const input = "~~~\nimport foo from \"bar\";\n~~~";
+    const input = '~~~\nimport foo from "bar";\n~~~';
     expect(stripMdxSyntax(input)).toBe(input);
   });
 
   it("does not close backtick fence with tildes", () => {
-    const input = "```\nimport foo from \"bar\";\n~~~\nimport baz from \"qux\";\n```";
+    const input = '```\nimport foo from "bar";\n~~~\nimport baz from "qux";\n```';
     expect(stripMdxSyntax(input)).toBe(input);
   });
 
   it("requires closing fence length >= opening fence length", () => {
-    const input = "````\nimport foo from \"bar\";\n```\nimport baz from \"qux\";\n````";
+    const input = '````\nimport foo from "bar";\n```\nimport baz from "qux";\n````';
     expect(stripMdxSyntax(input)).toBe(input);
   });
 
   it("removes multi-line import statements", () => {
-    const input = [
-      "import {",
-      "  Button,",
-      "  Card",
-      '} from "./components";',
-      "",
-      "# Hello",
-    ].join("\n");
+    const input = ["import {", "  Button,", "  Card", '} from "./components";', "", "# Hello"].join(
+      "\n",
+    );
     expect(stripMdxSyntax(input)).toBe("\n# Hello");
   });
 
@@ -122,13 +117,9 @@ describe("stripMdxSyntax", () => {
   });
 
   it("removes multi-line import with nested brackets", () => {
-    const input = [
-      "import {",
-      "  type Props,",
-      "  Component",
-      '} from "./mod";',
-      "# Content",
-    ].join("\n");
+    const input = ["import {", "  type Props,", "  Component", '} from "./mod";', "# Content"].join(
+      "\n",
+    );
     expect(stripMdxSyntax(input)).toBe("# Content");
   });
 });

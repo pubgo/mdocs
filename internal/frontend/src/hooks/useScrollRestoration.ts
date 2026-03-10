@@ -26,7 +26,11 @@ export function useScrollRestoration(
   });
 
   const captureScrollPosition = useCallback(() => {
-    const { scrollContainer: sc, activeFileId: fileId, activeHeadingId: headingId } = latestRef.current;
+    const {
+      scrollContainer: sc,
+      activeFileId: fileId,
+      activeHeadingId: headingId,
+    } = latestRef.current;
     if (!sc || !fileId) return;
 
     const rawScrollTop = sc.scrollTop;
@@ -35,9 +39,7 @@ export function useScrollRestoration(
     if (headingId) {
       const headingEl = document.getElementById(headingId);
       if (headingEl) {
-        relativeOffset =
-          headingEl.getBoundingClientRect().top -
-          sc.getBoundingClientRect().top;
+        relativeOffset = headingEl.getBoundingClientRect().top - sc.getBoundingClientRect().top;
       }
     }
 
@@ -59,26 +61,22 @@ export function useScrollRestoration(
     }
   }, []);
 
-  const restoreFromContext = useCallback(
-    (ctx: ScrollContext) => {
-      const sc = latestRef.current.scrollContainer;
-      if (!sc) return;
+  const restoreFromContext = useCallback((ctx: ScrollContext) => {
+    const sc = latestRef.current.scrollContainer;
+    if (!sc) return;
 
-      if (ctx.headingId) {
-        const headingEl = document.getElementById(ctx.headingId);
-        if (headingEl) {
-          const currentOffset =
-            headingEl.getBoundingClientRect().top -
-            sc.getBoundingClientRect().top;
-          sc.scrollTop += currentOffset - ctx.relativeOffset;
-          return;
-        }
+    if (ctx.headingId) {
+      const headingEl = document.getElementById(ctx.headingId);
+      if (headingEl) {
+        const currentOffset =
+          headingEl.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+        sc.scrollTop += currentOffset - ctx.relativeOffset;
+        return;
       }
+    }
 
-      sc.scrollTop = ctx.rawScrollTop;
-    },
-    [],
-  );
+    sc.scrollTop = ctx.rawScrollTop;
+  }, []);
 
   const onContentRendered = useCallback(() => {
     const fileId = latestRef.current.activeFileId;

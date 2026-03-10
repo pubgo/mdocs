@@ -17,9 +17,7 @@ beforeEach(() => {
 
 describe("TocPanel", () => {
   it("renders all headings", () => {
-    render(
-      <TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />,
-    );
+    render(<TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />);
     expect(screen.getByText("Introduction")).toBeInTheDocument();
     expect(screen.getByText("Setup")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
@@ -27,16 +25,12 @@ describe("TocPanel", () => {
   });
 
   it("shows 'No headings' when list is empty", () => {
-    render(
-      <TocPanel headings={[]} activeHeadingId={null} onHeadingClick={() => {}} />,
-    );
+    render(<TocPanel headings={[]} activeHeadingId={null} onHeadingClick={() => {}} />);
     expect(screen.getByText("No headings")).toBeInTheDocument();
   });
 
   it("highlights the active heading", () => {
-    render(
-      <TocPanel headings={headings} activeHeadingId="setup" onHeadingClick={() => {}} />,
-    );
+    render(<TocPanel headings={headings} activeHeadingId="setup" onHeadingClick={() => {}} />);
     const activeButton = screen.getByText("Setup").closest("button")!;
     expect(activeButton.className).toContain("bg-gh-bg-active");
     expect(activeButton.className).toContain("font-semibold");
@@ -48,18 +42,14 @@ describe("TocPanel", () => {
   it("calls onHeadingClick with the heading id", async () => {
     const user = userEvent.setup();
     const onHeadingClick = vi.fn();
-    render(
-      <TocPanel headings={headings} activeHeadingId={null} onHeadingClick={onHeadingClick} />,
-    );
+    render(<TocPanel headings={headings} activeHeadingId={null} onHeadingClick={onHeadingClick} />);
 
     await user.click(screen.getByText("Configuration"));
     expect(onHeadingClick).toHaveBeenCalledWith("config");
   });
 
   it("applies different indentation per heading level", () => {
-    render(
-      <TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />,
-    );
+    render(<TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />);
     const h1Button = screen.getByText("Introduction").closest("button")!;
     const h2Button = screen.getByText("Setup").closest("button")!;
     const h3Button = screen.getByText("Configuration").closest("button")!;
@@ -70,9 +60,7 @@ describe("TocPanel", () => {
   });
 
   it("shows heading text as title attribute", () => {
-    render(
-      <TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />,
-    );
+    render(<TocPanel headings={headings} activeHeadingId={null} onHeadingClick={() => {}} />);
     expect(screen.getByTitle("Introduction")).toBeInTheDocument();
     expect(screen.getByTitle("Setup")).toBeInTheDocument();
   });

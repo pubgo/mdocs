@@ -73,9 +73,7 @@ function FileItem({
         title={file.uploaded ? file.name : file.path}
       >
         <FileIcon uploaded={file.uploaded} />
-        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">
-          {file.name}
-        </span>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{file.name}</span>
       </button>
       <FileContextMenu
         file={file}
@@ -92,14 +90,9 @@ function FileItem({
 }
 
 function SortableFileItem(props: FileItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.file.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.file.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -177,7 +170,10 @@ export function Sidebar({
       if (oldIndex === -1 || newIndex === -1) return;
 
       const reordered = arrayMove(files, oldIndex, newIndex);
-      onFilesReorder(activeGroup, reordered.map((f) => f.id));
+      onFilesReorder(
+        activeGroup,
+        reordered.map((f) => f.id),
+      );
     },
     [files, activeGroup, onFilesReorder],
   );
@@ -243,17 +239,14 @@ export function Sidebar({
       });
   }, [groups, activeGroup]);
 
-  const handleMoveToGroup = useCallback(
-    async (id: string, group: string) => {
-      setMenuOpenId(null);
-      try {
-        await moveFile(id, group);
-      } catch (err) {
-        window.alert(err instanceof Error ? err.message : "Failed to move file");
-      }
-    },
-    [],
-  );
+  const handleMoveToGroup = useCallback(async (id: string, group: string) => {
+    setMenuOpenId(null);
+    try {
+      await moveFile(id, group);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to move file");
+    }
+  }, []);
 
   const handleRemove = useCallback((id: string) => {
     setMenuOpenId(null);
@@ -276,7 +269,9 @@ export function Sidebar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Escape") onSearchQueryChange(null); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onSearchQueryChange(null);
+            }}
             placeholder="Search files..."
             className="w-full px-2 py-1.5 text-sm bg-gh-bg border border-gh-border rounded-md text-gh-text placeholder:text-gh-text-secondary outline-none focus:border-gh-accent"
           />
@@ -319,10 +314,7 @@ export function Sidebar({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext
-              items={files.map((f) => f.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
               {files.map((f) => (
                 <SortableFileItem
                   key={f.id}

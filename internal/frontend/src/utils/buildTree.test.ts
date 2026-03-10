@@ -71,10 +71,7 @@ describe("buildTree", () => {
   });
 
   it("collapses deeply nested single-child directories", () => {
-    const files = [
-      makeFile("1", "/root/a/b/c/file.md"),
-      makeFile("2", "/root/x/file2.md"),
-    ];
+    const files = [makeFile("1", "/root/a/b/c/file.md"), makeFile("2", "/root/x/file2.md")];
     const root = buildTree(files);
 
     // Common prefix is /root
@@ -105,10 +102,7 @@ describe("buildTree", () => {
   });
 
   it("handles uploaded files (empty path) at root level", () => {
-    const files = [
-      makeUploadedFile("1", "uploaded.md"),
-      makeUploadedFile("2", "another.md"),
-    ];
+    const files = [makeUploadedFile("1", "uploaded.md"), makeUploadedFile("2", "another.md")];
     const root = buildTree(files);
 
     expect(root.children.length).toBe(2);

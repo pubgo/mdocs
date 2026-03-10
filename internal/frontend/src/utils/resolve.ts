@@ -5,15 +5,8 @@ export type LinkResolution =
   | { type: "file"; rawUrl: string }
   | { type: "passthrough" };
 
-export function resolveLink(
-  href: string | undefined,
-  fileId: string,
-): LinkResolution {
-  if (
-    !href ||
-    href.startsWith("http://") ||
-    href.startsWith("https://")
-  ) {
+export function resolveLink(href: string | undefined, fileId: string): LinkResolution {
+  if (!href || href.startsWith("http://") || href.startsWith("https://")) {
     return { type: "external" };
   }
   if (href.startsWith("#")) {
@@ -30,19 +23,14 @@ export function resolveLink(
   return { type: "passthrough" };
 }
 
-export function resolveImageSrc(
-  src: string | undefined,
-  fileId: string,
-): string | undefined {
+export function resolveImageSrc(src: string | undefined, fileId: string): string | undefined {
   if (src && !src.startsWith("http://") && !src.startsWith("https://")) {
     return `/_/api/files/${fileId}/raw/${src}`;
   }
   return src;
 }
 
-export function extractLanguage(
-  className: string | undefined,
-): string | null {
+export function extractLanguage(className: string | undefined): string | null {
   const match = /language-(\w+)/.exec(className || "");
   return match ? match[1] : null;
 }

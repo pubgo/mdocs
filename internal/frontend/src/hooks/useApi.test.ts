@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchGroups, fetchFileContent, openRelativeFile, reorderFiles, moveFile, uploadFile } from "./useApi";
+import {
+  fetchGroups,
+  fetchFileContent,
+  openRelativeFile,
+  reorderFiles,
+  moveFile,
+  uploadFile,
+} from "./useApi";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -8,10 +15,13 @@ beforeEach(() => {
 describe("fetchGroups", () => {
   it("returns groups on success", async () => {
     const data = [{ name: "default", files: [{ id: "abc12345", name: "a.md", path: "/a.md" }] }];
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(data),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(data),
+      }),
+    );
 
     const result = await fetchGroups();
     expect(result).toEqual(data);
@@ -19,10 +29,13 @@ describe("fetchGroups", () => {
   });
 
   it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      }),
+    );
 
     await expect(fetchGroups()).rejects.toThrow("Failed to fetch groups");
   });
@@ -31,10 +44,13 @@ describe("fetchGroups", () => {
 describe("fetchFileContent", () => {
   it("fetches content with correct URL", async () => {
     const data = { content: "# Hello", baseDir: "/tmp" };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(data),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(data),
+      }),
+    );
 
     const result = await fetchFileContent("abc12345");
     expect(result).toEqual(data);
@@ -42,10 +58,13 @@ describe("fetchFileContent", () => {
   });
 
   it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      }),
+    );
 
     await expect(fetchFileContent("nonexist")).rejects.toThrow("Failed to fetch file content");
   });
@@ -54,10 +73,13 @@ describe("fetchFileContent", () => {
 describe("openRelativeFile", () => {
   it("sends POST with correct body", async () => {
     const entry = { id: "eee55555", name: "other.md", path: "/other.md" };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(entry),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(entry),
+      }),
+    );
 
     const result = await openRelativeFile("ccc33333", "./other.md");
     expect(result).toEqual(entry);
@@ -69,10 +91,13 @@ describe("openRelativeFile", () => {
   });
 
   it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      }),
+    );
 
     await expect(openRelativeFile("aaa11111", "missing.md")).rejects.toThrow("Failed to open file");
   });
@@ -80,9 +105,12 @@ describe("openRelativeFile", () => {
 
 describe("reorderFiles", () => {
   it("sends PUT with correct URL and body", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+      }),
+    );
 
     await reorderFiles("default", ["ccc", "aaa", "bbb"]);
     expect(fetch).toHaveBeenCalledWith("/_/api/reorder", {
@@ -93,9 +121,12 @@ describe("reorderFiles", () => {
   });
 
   it("sends group name in body for slash-containing names", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+      }),
+    );
 
     await reorderFiles("api/docs", ["aaa", "bbb"]);
     expect(fetch).toHaveBeenCalledWith("/_/api/reorder", {
@@ -106,10 +137,13 @@ describe("reorderFiles", () => {
   });
 
   it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+      }),
+    );
 
     await expect(reorderFiles("default", ["aaa"])).rejects.toThrow("Failed to reorder files");
   });
@@ -117,9 +151,12 @@ describe("reorderFiles", () => {
 
 describe("moveFile", () => {
   it("sends PUT with correct URL and body", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+      }),
+    );
 
     await moveFile("eee55555", "docs");
     expect(fetch).toHaveBeenCalledWith("/_/api/files/eee55555/group", {
@@ -130,21 +167,29 @@ describe("moveFile", () => {
   });
 
   it("throws with server error message", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 409,
-      text: () => Promise.resolve('file "a.md" already exists in group "docs"\n'),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        text: () => Promise.resolve('file "a.md" already exists in group "docs"\n'),
+      }),
+    );
 
-    await expect(moveFile("aaa11111", "docs")).rejects.toThrow('file "a.md" already exists in group "docs"');
+    await expect(moveFile("aaa11111", "docs")).rejects.toThrow(
+      'file "a.md" already exists in group "docs"',
+    );
   });
 
   it("throws default message when response body is empty", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: () => Promise.resolve(""),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve(""),
+      }),
+    );
 
     await expect(moveFile("aaa11111", "docs")).rejects.toThrow("Failed to move file");
   });
@@ -163,12 +208,17 @@ describe("uploadFile", () => {
   });
 
   it("throws on error response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: () => Promise.resolve(""),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve(""),
+      }),
+    );
 
-    await expect(uploadFile("test.md", "# Hello", "default")).rejects.toThrow("Failed to upload file");
+    await expect(uploadFile("test.md", "# Hello", "default")).rejects.toThrow(
+      "Failed to upload file",
+    );
   });
 });

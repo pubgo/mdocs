@@ -32,10 +32,7 @@ export async function fetchFileContent(id: string): Promise<FileContent> {
   return res.json();
 }
 
-export async function openRelativeFile(
-  fileId: string,
-  relativePath: string,
-): Promise<FileEntry> {
+export async function openRelativeFile(fileId: string, relativePath: string): Promise<FileEntry> {
   const res = await fetch("/_/api/files/open", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,10 +47,7 @@ export async function removeFile(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to remove file");
 }
 
-export async function reorderFiles(
-  groupName: string,
-  fileIds: string[],
-): Promise<void> {
+export async function reorderFiles(groupName: string, fileIds: string[]): Promise<void> {
   const res = await fetch("/_/api/reorder", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

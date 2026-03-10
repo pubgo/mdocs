@@ -54,7 +54,12 @@ export function useFileDrop(activeGroup: string): { isDragging: boolean } {
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         if (isMarkdown(file.name) && file.size <= maxSize) {
-          uploads.push(file.text().then((content) => uploadFile(file.name, content, activeGroup)).catch(() => {}));
+          uploads.push(
+            file
+              .text()
+              .then((content) => uploadFile(file.name, content, activeGroup))
+              .catch(() => {}),
+          );
         }
       }
       await Promise.all(uploads);

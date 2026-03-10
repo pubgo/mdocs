@@ -15,19 +15,14 @@ import { useActiveHeading } from "./hooks/useActiveHeading";
 import { useScrollRestoration, SCROLL_SESSION_KEY } from "./hooks/useScrollRestoration";
 import type { Group } from "./hooks/useApi";
 import { fetchGroups, removeFile, reorderFiles } from "./hooks/useApi";
-import {
-  allFileIds,
-  parseGroupFromPath,
-  parseFileIdFromSearch,
-  groupToPath,
-} from "./utils/groups";
+import { allFileIds, parseGroupFromPath, parseFileIdFromSearch, groupToPath } from "./utils/groups";
 
 const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
 
 export function App() {
   const [groups, setGroups] = useState<Group[]>([]);
-  const [activeGroup, setActiveGroup] = useState<string>(() =>
-    parseGroupFromPath(window.location.pathname) || "default",
+  const [activeGroup, setActiveGroup] = useState<string>(
+    () => parseGroupFromPath(window.location.pathname) || "default",
   );
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -39,7 +34,9 @@ export function App() {
     try {
       const stored = localStorage.getItem(VIEWMODE_STORAGE_KEY);
       if (stored) return JSON.parse(stored);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return {};
   });
   const knownFileIds = useRef<Set<string>>(new Set());
@@ -53,7 +50,9 @@ export function App() {
         const ctx = JSON.parse(stored);
         if (ctx.url === window.location.pathname && ctx.fileId) return ctx.fileId;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return null;
   });
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
@@ -85,9 +84,7 @@ export function App() {
     } else if (initialFileId != null) {
       setInitialFileId(null);
       setActiveFileId(
-        group.files.some((f) => f.id === initialFileId)
-          ? initialFileId
-          : group.files[0].id,
+        group.files.some((f) => f.id === initialFileId) ? initialFileId : group.files[0].id,
       );
     } else {
       setActiveFileId((prev) => {
@@ -156,8 +153,10 @@ export function App() {
     }
   }, [initialFileId]);
 
-  const activeFileName = useMemo(() =>
-    groups.find((g) => g.name === activeGroup)?.files.find((f) => f.id === activeFileId)?.name ?? "",
+  const activeFileName = useMemo(
+    () =>
+      groups.find((g) => g.name === activeGroup)?.files.find((f) => f.id === activeFileId)?.name ??
+      "",
     [groups, activeGroup, activeFileId],
   );
 
@@ -216,30 +215,24 @@ export function App() {
     }
   }, [activeFileId]);
 
-  const handleFilesReorder = useCallback(
-    (groupName: string, fileIds: string[]) => {
-      // Optimistic update
-      setGroups((prev) =>
-        prev.map((g) => {
-          if (g.name !== groupName) return g;
-          const idToFile = new Map(g.files.map((f) => [f.id, f]));
-          const reordered = fileIds
-            .map((id) => idToFile.get(id))
-            .filter((f): f is NonNullable<typeof f> => f != null);
-          return { ...g, files: reordered };
-        }),
-      );
-      reorderFiles(groupName, fileIds);
-    },
-    [],
-  );
+  const handleFilesReorder = useCallback((groupName: string, fileIds: string[]) => {
+    // Optimistic update
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.name !== groupName) return g;
+        const idToFile = new Map(g.files.map((f) => [f.id, f]));
+        const reordered = fileIds
+          .map((id) => idToFile.get(id))
+          .filter((f): f is NonNullable<typeof f> => f != null);
+        return { ...g, files: reordered };
+      }),
+    );
+    reorderFiles(groupName, fileIds);
+  }, []);
 
   const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
 
-  const activeHeadingId = useActiveHeading(
-    headingIds,
-    scrollContainer,
-  );
+  const activeHeadingId = useActiveHeading(headingIds, scrollContainer);
 
   const { captureScrollPosition, onContentRendered } = useScrollRestoration(
     scrollContainer,
@@ -260,7 +253,13 @@ export function App() {
           onClick={() => setSidebarOpen((v) => !v)}
           title="Toggle sidebar"
         >
-          <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <svg
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            viewBox="0 0 24 24"
+          >
             <rect x="2" y="3" width="20" height="18" rx="2" />
             <line x1="9" y1="3" x2="9" y2="21" />
             {sidebarOpen ? (
@@ -282,16 +281,18 @@ export function App() {
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
-        {sidebarOpen && <Sidebar
-          groups={groups}
-          activeGroup={activeGroup}
-          activeFileId={activeFileId}
-          onFileSelect={setActiveFileId}
-          onFilesReorder={handleFilesReorder}
-          viewMode={currentViewMode}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-        />}
+        {sidebarOpen && (
+          <Sidebar
+            groups={groups}
+            activeGroup={activeGroup}
+            activeFileId={activeFileId}
+            onFileSelect={setActiveFileId}
+            onFilesReorder={handleFilesReorder}
+            viewMode={currentViewMode}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+          />
+        )}
         <main className="flex-1 flex flex-col overflow-hidden">
           <div ref={setScrollContainer} className="flex-1 overflow-y-auto p-8 bg-gh-bg">
             {activeFileId != null ? (

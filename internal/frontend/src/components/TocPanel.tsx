@@ -82,9 +82,7 @@ export function TocPanel({ headings, activeHeadingId, onHeadingClick }: TocPanel
       />
       <nav className="flex flex-col pb-1">
         {headings.length === 0 ? (
-          <div className="px-3 py-2 text-gh-text-secondary text-sm">
-            No headings
-          </div>
+          <div className="px-3 py-2 text-gh-text-secondary text-sm">No headings</div>
         ) : (
           headings.map((h) => (
             <button
@@ -97,9 +95,7 @@ export function TocPanel({ headings, activeHeadingId, onHeadingClick }: TocPanel
               onClick={() => onHeadingClick(h.id)}
               title={h.text}
             >
-              <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {h.text}
-              </span>
+              <span className="overflow-hidden text-ellipsis whitespace-nowrap">{h.text}</span>
             </button>
           ))
         )}

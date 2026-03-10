@@ -13,7 +13,9 @@ function getInitialCollapsed(group: string): Set<string> {
       const parsed = JSON.parse(stored);
       if (parsed[group]) return new Set(parsed[group]);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return new Set();
 }
 
@@ -61,7 +63,9 @@ export function TreeView({
       const all = stored ? JSON.parse(stored) : {};
       all[activeGroup] = [...collapsedPaths];
       localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(all));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [collapsedPaths, activeGroup]);
 
   const handleToggleCollapse = useCallback((path: string) => {
@@ -175,9 +179,7 @@ function TreeNodeItem({
             <path d="M.513 1.513A1.75 1.75 0 0 1 1.75 1h3.2c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.8A1.75 1.75 0 0 1 16 4.75v8.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75c0-.464.184-.91.513-1.237ZM1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H7.5c-.55 0-1.07-.26-1.4-.7l-.9-1.2a.25.25 0 0 0-.2-.1Z" />
           )}
         </svg>
-        <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-          {node.name}
-        </span>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap">{node.name}</span>
       </button>
       {!isCollapsed &&
         node.children.map((child) => (
@@ -246,9 +248,7 @@ function FileNodeItem({
         title={file.uploaded ? file.name : file.path}
       >
         <FileIcon uploaded={file.uploaded} />
-        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">
-          {name}
-        </span>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{name}</span>
       </button>
       <FileContextMenu
         file={file}
