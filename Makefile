@@ -17,6 +17,9 @@ test:
 build: generate
 	go build -ldflags=$(BUILD_LDFLAGS) -trimpath -o mo .
 
+install: generate
+	go install -ldflags=$(BUILD_LDFLAGS) -trimpath .
+
 dev: build
 	./mo -p 16275 --foreground $(ARGS)
 

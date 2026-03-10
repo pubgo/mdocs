@@ -10,13 +10,16 @@ import { RestartButton } from "./components/RestartButton";
 import { DropOverlay } from "./components/DropOverlay";
 import { TocPanel } from "./components/TocPanel";
 import type { TocHeading } from "./components/TocPanel";
+import { GraphView } from "./components/GraphView";
 import { useSSE } from "./hooks/useSSE";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useActiveHeading } from "./hooks/useActiveHeading";
 import { useScrollRestoration, SCROLL_SESSION_KEY } from "./hooks/useScrollRestoration";
-import type { Group } from "./hooks/useApi";
-import { fetchGroups, removeFile, reorderFiles } from "./hooks/useApi";
-import { allFileIds, parseGroupFromPath, parseFileIdFromSearch, groupToPath } from "./utils/groups";
+import type { Group, Status } from "./hooks/useApi";
+import { fetchGroups, fetchStatus, removeFile, removePattern, reorderFiles } from "./hooks/useApi";
+import { allFileIds, parseGroupFromPath, parseFileIdFromSearch, groupToPath, buildFileUrl } from "./utils/groups";
+import { getAllFileIdsUnder, type TreeNode } from "./utils/buildTree";
+import { OutlineGraphView } from "./components/OutlineGraphView";
 
 const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
 const WIDTH_STORAGE_KEY = "mo-layout-width";
@@ -48,6 +51,9 @@ export function App() {
       return false;
     }
   });
+  const [showGraph, setShowGraph] = useState(false);
+  const [graphViewMode, setGraphViewMode] = useState<"link" | "outline">("link");
+  const [status, setStatus] = useState<Status | null>(null);
   const knownFileIds = useRef<Set<string>>(new Set());
   const [initialFileId, setInitialFileId] = useState<string | null>(() => {
     const fromUrl = parseFileIdFromSearch(window.location.search);
@@ -105,7 +111,8 @@ export function App() {
 
   const loadGroups = useCallback(async () => {
     try {
-      const data = await fetchGroups();
+      const [data, statusData] = await Promise.all([fetchGroups(), fetchStatus()]);
+      setStatus(statusData);
       const newIds = allFileIds(data);
       const wasEmpty = knownFileIds.current.size === 0;
       const added: string[] = [];
@@ -117,7 +124,6 @@ export function App() {
       knownFileIds.current = newIds;
 
       setGroups(data);
-
       if (added.length > 0 && !wasEmpty) {
         // Only auto-select if the new file belongs to the current active group
         setActiveGroup((currentGroup) => {
@@ -139,28 +145,32 @@ export function App() {
 
   // Initial data fetch (setState inside .then() is async, not flagged by linter)
   useEffect(() => {
-    fetchGroups()
-      .then((data) => {
+    Promise.all([fetchGroups(), fetchStatus()])
+      .then(([data, statusData]) => {
         knownFileIds.current = allFileIds(data);
         setGroups(data);
+        setStatus(statusData);
       })
       .catch(() => {});
   }, []);
 
-  // Sync URL path with active group
+  // Sync URL with active group (and ?file= when a file is selected, e.g. after opening from graph)
   useEffect(() => {
-    const expectedPath = groupToPath(activeGroup);
-    if (window.location.pathname !== expectedPath) {
-      window.history.replaceState(null, "", expectedPath);
+    const targetUrl = activeFileId
+      ? buildFileUrl(activeGroup, activeFileId)
+      : groupToPath(activeGroup);
+    const current = window.location.pathname + (window.location.search || "");
+    if (current !== targetUrl) {
+      window.history.replaceState(null, "", targetUrl);
     }
-  }, [activeGroup]);
+  }, [activeGroup, activeFileId]);
 
-  // Clear search params after consuming initial file ID
+  // Clear search params after consuming initial file ID (don't clear when a file is selected, e.g. from graph)
   useEffect(() => {
-    if (initialFileId === null && window.location.search) {
+    if (initialFileId === null && window.location.search && !activeFileId) {
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [initialFileId]);
+  }, [initialFileId, activeFileId]);
 
   const activeFileName = useMemo(
     () =>
@@ -247,6 +257,30 @@ export function App() {
     reorderFiles(groupName, fileIds);
   }, []);
 
+  const groupPatterns = useMemo(
+    () => status?.groups?.find((g) => g.name === activeGroup)?.patterns ?? [],
+    [status, activeGroup],
+  );
+
+  const handleRemovePattern = useCallback(
+    async (pattern: string) => {
+      await removePattern(pattern, activeGroup);
+      loadGroups();
+    },
+    [activeGroup, loadGroups],
+  );
+
+  const handleRemoveFolder = useCallback(
+    async (node: TreeNode) => {
+      const ids = getAllFileIdsUnder(node);
+      for (const id of ids) {
+        await removeFile(id);
+      }
+      loadGroups();
+    },
+    [loadGroups],
+  );
+
   const headingIds = useMemo(() => headings.map((h) => h.id), [headings]);
 
   const activeHeadingId = useActiveHeading(headingIds, scrollContainer);
@@ -297,6 +331,40 @@ export function App() {
         <ViewModeToggle viewMode={currentViewMode} onToggle={handleViewModeToggle} />
         <SearchToggle isOpen={searchQuery != null} onToggle={handleSearchToggle} />
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
+              showGraph && graphViewMode === "link" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+            } text-gh-header-text`}
+            onClick={() => {
+              setGraphViewMode("link");
+              setShowGraph(true);
+            }}
+            aria-label="Link graph"
+            aria-pressed={showGraph && graphViewMode === "link"}
+            title="链接关系图"
+          >
+            <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
+              showGraph && graphViewMode === "outline" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+            } text-gh-header-text`}
+            onClick={() => {
+              setGraphViewMode("outline");
+              setShowGraph(true);
+            }}
+            aria-label="Outline graph"
+            aria-pressed={showGraph && graphViewMode === "outline"}
+            title="标题结构图"
+          >
+            <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10h6V7H3zm0-4h18M9 11h12M9 15h12M9 19h12" />
+            </svg>
+          </button>
           <WidthToggle isWide={isWide} onToggle={() => setIsWide((v) => !v)} />
           <ThemeToggle />
         </div>
@@ -307,6 +375,9 @@ export function App() {
             groups={groups}
             activeGroup={activeGroup}
             activeFileId={activeFileId}
+            groupPatterns={groupPatterns}
+            onRemovePattern={handleRemovePattern}
+            onRemoveFolder={handleRemoveFolder}
             onFileSelect={setActiveFileId}
             onFilesReorder={handleFilesReorder}
             viewMode={currentViewMode}
@@ -316,7 +387,13 @@ export function App() {
         )}
         <main className="flex-1 flex flex-col overflow-hidden">
           <div ref={setScrollContainer} className="flex-1 overflow-y-auto p-8 bg-gh-bg">
-            {activeFileId != null ? (
+            {showGraph ? (
+              graphViewMode === "outline" ? (
+                <OutlineGraphView onClose={() => setShowGraph(false)} />
+              ) : (
+                <GraphView onClose={() => setShowGraph(false)} />
+              )
+            ) : activeFileId != null ? (
               <MarkdownViewer
                 fileId={activeFileId}
                 fileName={activeFileName}

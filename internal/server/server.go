@@ -968,6 +968,8 @@ func NewHandler(state *State) http.Handler {
 	mux.HandleFunc("POST /_/api/shutdown", handleShutdown(state))
 	mux.HandleFunc("GET /_/api/status", handleStatus(state))
 	mux.HandleFunc("GET /_/api/version", handleVersion())
+	mux.HandleFunc("GET /_/api/graph", handleGraph(state))
+	mux.HandleFunc("GET /_/api/outline", handleOutline(state))
 	mux.HandleFunc("GET /_/events", handleSSE(state))
 	mux.HandleFunc("GET /", handleSPA())
 

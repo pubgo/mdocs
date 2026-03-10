@@ -111,6 +111,9 @@ interface SidebarProps {
   groups: Group[];
   activeGroup: string;
   activeFileId: string | null;
+  groupPatterns?: string[];
+  onRemovePattern?: (pattern: string) => void;
+  onRemoveFolder?: (node: import("../utils/buildTree").TreeNode) => void;
   onFileSelect: (id: string) => void;
   onFilesReorder: (groupName: string, fileIds: string[]) => void;
   viewMode: ViewMode;
@@ -122,6 +125,9 @@ export function Sidebar({
   groups,
   activeGroup,
   activeFileId,
+  groupPatterns = [],
+  onRemovePattern,
+  onRemoveFolder,
   onFileSelect,
   onFilesReorder,
   viewMode,
@@ -282,6 +288,7 @@ export function Sidebar({
           <TreeView
             files={files}
             activeGroup={activeGroup}
+            groupPatterns={groupPatterns}
             activeFileId={activeFileId}
             menuOpenId={menuOpenId}
             otherGroups={otherGroups}
@@ -290,6 +297,8 @@ export function Sidebar({
             onOpenInNewTab={handleOpenInNewTab}
             onMoveToGroup={handleMoveToGroup}
             onRemove={handleRemove}
+            onRemovePattern={onRemovePattern}
+            onRemoveFolder={onRemoveFolder}
             menuRef={menuRef}
           />
         ) : isSearching ? (

@@ -20,6 +20,54 @@ export interface VersionInfo {
   revision: string;
 }
 
+export interface GraphNode {
+  id: string;
+  name: string;
+  path?: string;
+  group?: string;
+}
+
+export interface GraphEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface LinkGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export async function fetchGraph(): Promise<LinkGraph> {
+  const res = await fetch("/_/api/graph");
+  if (!res.ok) throw new Error("Failed to fetch graph");
+  return res.json();
+}
+
+export interface OutlineHeading {
+  level: number;
+  text: string;
+  linkedFileIds?: string[];
+}
+
+export interface OutlineNode {
+  id: string;
+  name: string;
+  group: string;
+  path?: string;
+  headings: OutlineHeading[];
+}
+
+export interface Outline {
+  files: OutlineNode[];
+}
+
+export async function fetchOutline(): Promise<Outline> {
+  const res = await fetch("/_/api/outline");
+  if (!res.ok) throw new Error("Failed to fetch outline");
+  return res.json();
+}
+
 export async function fetchGroups(): Promise<Group[]> {
   const res = await fetch("/_/api/groups");
   if (!res.ok) throw new Error("Failed to fetch groups");
@@ -89,4 +137,32 @@ export async function fetchVersion(): Promise<VersionInfo> {
   const res = await fetch("/_/api/version");
   if (!res.ok) throw new Error("Failed to fetch version");
   return res.json();
+}
+
+export interface StatusGroup {
+  name: string;
+  files: FileEntry[];
+  patterns?: string[];
+}
+
+export interface Status {
+  version: string;
+  revision: string;
+  pid: number;
+  groups: StatusGroup[];
+}
+
+export async function fetchStatus(): Promise<Status> {
+  const res = await fetch("/_/api/status");
+  if (!res.ok) throw new Error("Failed to fetch status");
+  return res.json();
+}
+
+export async function removePattern(pattern: string, group: string): Promise<void> {
+  const res = await fetch("/_/api/patterns", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pattern, group }),
+  });
+  if (!res.ok) throw new Error("Failed to remove pattern");
 }

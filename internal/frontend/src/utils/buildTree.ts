@@ -1,5 +1,47 @@
 import type { FileEntry } from "../hooks/useApi";
 
+/** Returns the common directory path of all filesystem files (empty if none). */
+export function getCommonPrefixPath(files: FileEntry[]): string {
+  const fsFiles = files.filter((f) => !f.uploaded);
+  if (fsFiles.length === 0) return "";
+  const segsList = fsFiles.map((f) => f.path.split("/").filter(Boolean).slice(0, -1));
+  if (segsList.some((s) => s.length === 0)) return "";
+  const first = segsList[0];
+  let n = first.length;
+  for (let i = 1; i < segsList.length; i++) {
+    const s = segsList[i];
+    for (let j = 0; j < n && j < s.length; j++) {
+      if (s[j] !== first[j]) {
+        n = j;
+        break;
+      }
+    }
+  }
+  const common = first.slice(0, n);
+  if (common.length === 0) return "";
+  const joined = common.join("/");
+  const isAbsolute = fsFiles[0].path.startsWith("/");
+  return isAbsolute ? "/" + joined : joined;
+}
+
+/** Get the base directory of a glob pattern (path before any *). */
+export function getPatternBaseDir(pattern: string): string {
+  const normalized = pattern.replace(/\\/g, "/");
+  const idx = normalized.indexOf("*");
+  if (idx === -1) return normalized.replace(/\/+$/, "");
+  return normalized.slice(0, idx).replace(/\/+$/, "");
+}
+
+/** Collect all file IDs in the subtree under this node (for folder: all descendant files). */
+export function getAllFileIdsUnder(node: TreeNode): string[] {
+  if (node.file != null) return [node.file.id];
+  const ids: string[] = [];
+  for (const child of node.children) {
+    ids.push(...getAllFileIdsUnder(child));
+  }
+  return ids;
+}
+
 export interface TreeNode {
   name: string;
   fullPath: string;
@@ -68,6 +110,23 @@ export function buildTree(files: FileEntry[]): TreeNode {
       children: [],
       file,
     });
+  }
+
+  // When all files are in the same directory, root has only file children and no folder row.
+  // Wrap them in a single folder node so the user sees one folder with a remove button.
+  if (
+    commonPrefix.length > 0 &&
+    root.children.length > 0 &&
+    root.children.every((c) => c.file != null && !c.file.uploaded)
+  ) {
+    const folderName = commonPrefix[commonPrefix.length - 1];
+    const folderNode: TreeNode = {
+      name: folderName,
+      fullPath: folderName,
+      children: [...root.children],
+      file: null,
+    };
+    root.children = [folderNode];
   }
 
   // Add uploaded files at root level

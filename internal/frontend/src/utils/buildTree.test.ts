@@ -35,9 +35,12 @@ describe("buildTree", () => {
     const files = [makeFile("1", "/home/user/docs/readme.md")];
     const root = buildTree(files);
 
+    // Same-dir wrap: one folder "docs" containing the file
     expect(root.children.length).toBe(1);
-    expect(root.children[0].name).toBe("readme.md");
-    expect(root.children[0].file?.id).toBe("1");
+    expect(root.children[0].name).toBe("docs");
+    expect(root.children[0].file).toBeNull();
+    expect(root.children[0].children[0].name).toBe("readme.md");
+    expect(root.children[0].children[0].file?.id).toBe("1");
   });
 
   it("handles all files in same directory", () => {
@@ -48,9 +51,12 @@ describe("buildTree", () => {
     ];
     const root = buildTree(files);
 
-    expect(root.children.length).toBe(3);
-    expect(root.children.map((c) => c.name)).toEqual(["a.md", "b.md", "c.md"]);
-    expect(root.children.every((c) => c.file != null)).toBe(true);
+    // Wrapped in one folder so tree view shows a folder row with remove button
+    expect(root.children.length).toBe(1);
+    expect(root.children[0].name).toBe("docs");
+    expect(root.children[0].file).toBeNull();
+    expect(root.children[0].children.map((c) => c.name)).toEqual(["a.md", "b.md", "c.md"]);
+    expect(root.children[0].children.every((c) => c.file != null)).toBe(true);
   });
 
   it("collapses single-child directory chains", () => {
