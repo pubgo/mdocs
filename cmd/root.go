@@ -190,10 +190,12 @@ func run(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Continue? [y/N] ")
 		scanner := bufio.NewScanner(os.Stdin)
 		if !scanner.Scan() {
+			fmt.Fprintln(os.Stderr, "mo: canceled")
 			return nil
 		}
 		ans := strings.ToLower(strings.TrimSpace(scanner.Text()))
 		if ans != "y" && ans != "yes" {
+			fmt.Fprintln(os.Stderr, "mo: canceled")
 			return nil
 		}
 	}
