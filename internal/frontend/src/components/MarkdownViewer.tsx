@@ -36,9 +36,7 @@ interface MarkdownViewerProps {
 let mermaidInitialized = false;
 
 function getMermaidTheme(): "dark" | "default" {
-  return document.documentElement.getAttribute("data-theme") === "dark"
-    ? "dark"
-    : "default";
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "default";
 }
 
 function ensureMermaidInit() {
@@ -55,10 +53,7 @@ function cleanupMermaidErrors() {
   document.querySelectorAll("[id^='dmermaid-']").forEach((el) => el.remove());
 }
 
-async function renderMermaid(
-  code: string,
-  width?: number,
-): Promise<string> {
+async function renderMermaid(code: string, width?: number): Promise<string> {
   let resolve: (svg: string) => void;
   let reject: (err: unknown) => void;
   const result = new Promise<string>((res, rej) => {
@@ -126,10 +121,7 @@ export function MermaidBlock({ code }: { code: string }) {
   if (svg) {
     return (
       <div ref={containerRef} className="relative group">
-        <div
-          className="overflow-x-auto"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+        <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />
         <MermaidImageCopyButton svg={svg} />
         <CodeBlockCopyButton code={code} themed />
       </div>
@@ -157,9 +149,7 @@ function MermaidImageCopyButton({ svg }: { svg: string }) {
   const handleCopy = async () => {
     try {
       const blob = await svgToPngBlob(svg);
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-      ]);
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopied(true);
     } catch {
       // clipboard API may fail in insecure contexts
@@ -179,7 +169,13 @@ function MermaidImageCopyButton({ svg }: { svg: string }) {
       ) : (
         <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
           <path d="M16 13.25A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75ZM1.75 2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25Z" />
-          <path d="M0.5 12.75 4.5 5.5 7.5 9 9.5 6.5 15.5 12.75" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          <path
+            d="M0.5 12.75 4.5 5.5 7.5 9 9.5 6.5 15.5 12.75"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
         </svg>
       )}
     </button>
@@ -253,7 +249,8 @@ function svgToPngBlob(svgString: string): Promise<Blob> {
 }
 
 const darkButtonStyle = "border-[#484f58] hover:border-[#8b949e] text-[#8b949e] bg-[#2d333b]";
-const themedButtonStyle = "border-gh-border hover:border-gh-text-secondary text-gh-text-secondary bg-gh-bg-secondary";
+const themedButtonStyle =
+  "border-gh-border hover:border-gh-text-secondary text-gh-text-secondary bg-gh-bg-secondary";
 
 function CodeBlockCopyButton({ code, themed = false }: { code: string; themed?: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -339,7 +336,9 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 function FrontmatterBlock({ yaml }: { yaml: string }) {
   return (
     <details open className="mb-4">
-      <summary className="cursor-pointer select-none text-gh-text-secondary text-sm font-medium py-1">Metadata</summary>
+      <summary className="cursor-pointer select-none text-gh-text-secondary text-sm font-medium py-1">
+        Metadata
+      </summary>
       <div className="mt-2">
         <CodeBlock language="yaml" code={yaml} />
       </div>
@@ -380,7 +379,17 @@ function RawView({ content }: { content: string }) {
   );
 }
 
-export function MarkdownViewer({ fileId, fileName, revision, onFileOpened, onHeadingsChange, onContentRendered, isTocOpen, onTocToggle, onRemoveFile }: MarkdownViewerProps) {
+export function MarkdownViewer({
+  fileId,
+  fileName,
+  revision,
+  onFileOpened,
+  onHeadingsChange,
+  onContentRendered,
+  isTocOpen,
+  onTocToggle,
+  onRemoveFile,
+}: MarkdownViewerProps) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [isRawView, setIsRawView] = useState(false);
@@ -467,11 +476,7 @@ export function MarkdownViewer({ fileId, fileName, revision, onFileOpened, onHea
             );
           case "markdown":
             return (
-              <a
-                href={href}
-                onClick={(e) => handleLinkClick(e, resolved.hrefPath)}
-                {...props}
-              >
+              <a href={href} onClick={(e) => handleLinkClick(e, resolved.hrefPath)} {...props}>
                 {children}
               </a>
             );
@@ -493,7 +498,10 @@ export function MarkdownViewer({ fileId, fileName, revision, onFileOpened, onHea
     [fileId, handleLinkClick],
   );
 
-  const parsed = useMemo(() => isRawView ? null : parseFrontmatter(content), [content, isRawView]);
+  const parsed = useMemo(
+    () => (isRawView ? null : parseFrontmatter(content)),
+    [content, isRawView],
+  );
 
   const renderedContent = useMemo(() => {
     if (isRawView) {
@@ -504,7 +512,11 @@ export function MarkdownViewer({ fileId, fileName, revision, onFileOpened, onHea
     return (
       <>
         {parsed && <FrontmatterBlock yaml={parsed.yaml} />}
-        <Markdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeGithubAlerts, rehypeSlug, rehypeKatex]} components={components}>
+        <Markdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeRaw, rehypeGithubAlerts, rehypeSlug, rehypeKatex]}
+          components={components}
+        >
           {md}
         </Markdown>
       </>
@@ -545,7 +557,11 @@ export function MarkdownViewer({ fileId, fileName, revision, onFileOpened, onHea
   }, [loading, renderedContent]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-50 text-gh-text-secondary text-sm">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-50 text-gh-text-secondary text-sm">
+        Loading...
+      </div>
+    );
   }
 
   return (
