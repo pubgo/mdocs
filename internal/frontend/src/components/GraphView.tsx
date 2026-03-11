@@ -33,24 +33,17 @@ function nodeDisplayLabels(nodes: { id: string; name: string; path?: string }[])
   return labels;
 }
 
-/** Build edge label: heading · targetName for better identification. */
-function edgeDisplayLabel(
-  e: { label?: string; heading?: string },
-  targetName: string,
-  maxLen = 32
-): string {
+/** Build edge label: heading only when available. */
+function edgeDisplayLabel(e: { label?: string; heading?: string }, targetName: string, maxLen = 32): string {
   const safe = (s: string) => s.replace(/["\[\]()|]/g, " ").trim();
-  const target = safe(targetName);
   if (e.heading) {
-    const h = safe(e.heading);
-    const combined = h ? `${h} · ${target}` : target;
-    return combined.slice(0, maxLen);
+    return safe(e.heading).slice(0, maxLen);
   }
   if (e.label && e.label.length > 0) {
     const lab = safe(e.label);
-    if (lab && lab !== target) return lab.slice(0, maxLen);
+    if (lab) return lab.slice(0, maxLen);
   }
-  return target.slice(0, maxLen);
+  return safe(targetName).slice(0, maxLen);
 }
 
 function buildMermaidFlowchart(graph: LinkGraph): string {

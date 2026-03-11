@@ -77,8 +77,9 @@ function buildFileOutline(
             const targetColorIdx = targetFile
               ? outline.files.indexOf(targetFile) % COLORS.length
               : 0;
+            const hasTargetContent = !!(targetFile?.headings.length);
             const targetOutline =
-              targetFile?.headings.length && !collapsedIds.has(linkId)
+              hasTargetContent && !collapsedIds.has(linkId)
                 ? buildFileOutline(
                     targetFile,
                     outline,
@@ -99,7 +100,7 @@ function buildFileOutline(
                 targetFileId: tid,
                 targetGroup: target?.group ?? "default",
                 isLink: true,
-                hasChildren: targetOutline.length > 0,
+                hasChildren: hasTargetContent,
                 fileColorIndex: targetColorIdx,
               },
               children: targetOutline.length > 0 ? targetOutline : undefined,
@@ -158,10 +159,12 @@ function findRootFiles(outline: Outline): OutlineFile[] {
   return outline.files.filter((f) => !linkedTo.has(f.id));
 }
 
+/** 默认折叠：H2 和链接节点，只展开文件与一级标题。 */
 function collectDefaultCollapsedIds(outline: Outline): Set<string> {
   const ids = new Set<string>();
   function walk(node: TreeDataNode) {
     if (node.data?.isH2 && node.data?.hasLinks && node.children?.length) ids.add(node.id);
+    if (node.data?.isLink && node.data?.hasChildren && node.children?.length) ids.add(node.id);
     node.children?.forEach(walk);
   }
   const root = outlineToTreeData(outline, new Set());
