@@ -4,15 +4,17 @@ import type { Outline } from "../hooks/useApi";
 import { fetchOutline } from "../hooks/useApi";
 import { buildFileUrl } from "../utils/groups";
 
-const FILE_COLORS = [
-  "#0550ae",
-  "#116329",
-  "#9a3b00",
-  "#6639ba",
-  "#a0111f",
-  "#953800",
-  "#0969da",
-  "#8250df",
+const COLORS = [
+  "#5B8FF9",
+  "#F6BD16",
+  "#5AD8A6",
+  "#945FB9",
+  "#E86452",
+  "#6DC8EC",
+  "#FF99C3",
+  "#1E9493",
+  "#FF9845",
+  "#5D7092",
 ];
 
 interface PackNodeData {
@@ -37,7 +39,22 @@ function parseOutlineToPack(outline: Outline): PackNodeData {
     for (let i = 0; i < file.headings.length; i++) {
       const h = file.headings[i];
       if (h.level === 1) {
-        h1Text = h.text;
+        if (h1Text === file.name) h1Text = h.text;
+        const h2Children: PackNodeData[] = [];
+        for (let j = i + 1; j < file.headings.length; j++) {
+          const h2 = file.headings[j];
+          if (h2.level === 1) break;
+          if (h2.level === 2) {
+            h2Children.push({
+              name: h2.text,
+              type: "h2",
+              fileId: file.id,
+              group: file.group,
+              h2Text: h2.text,
+              value: 2,
+            });
+          }
+        }
         nodeChildren.push({
           name: h.text,
           type: "h1",
@@ -45,15 +62,7 @@ function parseOutlineToPack(outline: Outline): PackNodeData {
           group: file.group,
           h1Text: h.text,
           value: 4,
-        });
-      } else if (h.level === 2) {
-        nodeChildren.push({
-          name: h.text,
-          type: "h2",
-          fileId: file.id,
-          group: file.group,
-          h2Text: h.text,
-          value: 2,
+          children: h2Children.length > 0 ? h2Children : undefined,
         });
       }
     }
@@ -71,18 +80,20 @@ function parseOutlineToPack(outline: Outline): PackNodeData {
     for (const tid of linkedIds) {
       const target = fileById.get(tid);
       if (target) {
+        const targetH1 = target.headings.find((h) => h.level === 1)?.text;
         nodeChildren.push({
-          name: target.name,
+          name: targetH1 ?? target.name,
           type: "file",
           fileId: target.id,
           group: target.group,
+          h1Text: targetH1 ?? target.name,
           value: 8,
         });
       }
     }
 
     return {
-      name: file.name,
+      name: h1Text ?? file.name,
       type: "file",
       fileId: file.id,
       group: file.group,
@@ -209,20 +220,32 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
       .attr("fill", (d) => {
         const t = d.data.type;
         const idx = outline.files.findIndex((f) => f.id === d.data.fileId);
-        const c = FILE_COLORS[idx >= 0 ? idx % FILE_COLORS.length : 0];
+        const c = COLORS[idx >= 0 ? idx % COLORS.length : 0];
         if (t === "file") return c;
         if (t === "h1") return c;
-        if (t === "h2") return "transparent";
-        return "transparent";
+        if (t === "h2") return isDark ? `${c}40` : `${c}30`;
+        return c;
       })
-      .attr("stroke", (d) => (d.data.type === "file" ? strokeColor : "none"))
+      .attr("stroke", (d) => {
+        const t = d.data.type;
+        const idx = outline.files.findIndex((f) => f.id === d.data.fileId);
+        const c = COLORS[idx >= 0 ? idx % COLORS.length : 0];
+        if (t === "file") return strokeColor;
+        if (t === "h1" || t === "h2") return c;
+        return strokeColor;
+      })
       .attr("stroke-width", (d) => (d.data.type === "file" ? 2 : 0))
-      .attr("pointer-events", (d) => (d.children ? "all" : "all"))
+      .attr("stroke-width", (d) => {
+        const hasStroke = ["file", "h1", "h2"].includes(d.data.type);
+        return hasStroke ? 2 : 0;
+      })
+      .attr("pointer-events", "all")
       .on("mouseover", function () {
         d3.select(this).attr("stroke-width", 3);
       })
       .on("mouseout", function (_, d) {
-        d3.select(this).attr("stroke-width", d.data.type === "file" ? 2 : 0);
+        const hasStroke = ["file", "h1", "h2"].includes(d.data.type);
+        d3.select(this).attr("stroke-width", hasStroke ? 2 : 0);
       })
       .on("click", (event, d) => {
         event.stopPropagation();
@@ -249,8 +272,16 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
       .data(root.descendants())
       .join("text")
       .style("fill", textColor)
-      .style("fill-opacity", (d) => (d.parent === root ? 1 : 0))
-      .style("display", (d) => (d.parent === root ? "inline" : "none"))
+      .style("fill-opacity", (d) => {
+        if (d.parent !== root) return 0;
+        if (d.data.type === "h2") return 0;
+        return 1;
+      })
+      .style("display", (d) => {
+        if (d.parent !== root) return "none";
+        if (d.data.type === "h2") return "none";
+        return "inline";
+      })
       .style("font-weight", (d) => (d.data.type === "h1" ? 600 : 400))
       .style("font-size", (d) => {
         if (d.data.type === "root") return 0;
@@ -260,7 +291,7 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
       })
       .text((d) => {
         if (d.data.type === "root") return "";
-        if (d.data.type === "file") return d.data.name;
+        if (d.data.type === "file") return d.data.h1Text ?? d.data.name;
         if (d.data.type === "h1") return d.data.h1Text ?? d.data.name;
         if (d.data.type === "h2") return d.data.h2Text ?? d.data.name;
         return d.data.name;
@@ -268,6 +299,22 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
 
     let focus = root;
     let view: [number, number, number] = [width / 2, height / 2, root.r * 2];
+    let currentZoomK = 1;
+    const H2_VISIBLE_ZOOM = 1.05;
+
+    function updateLabelVisibility() {
+      label
+        .style("fill-opacity", (n) => {
+          if (n.parent !== focus) return 0;
+          if (n.data.type === "h2") return currentZoomK >= H2_VISIBLE_ZOOM ? 1 : 0;
+          return 1;
+        })
+        .style("display", (n) => {
+          if (n.parent !== focus) return "none";
+          if (n.data.type === "h2") return currentZoomK >= H2_VISIBLE_ZOOM ? "inline" : "none";
+          return "inline";
+        });
+    }
 
     function zoomTo(v: [number, number, number]) {
       const k = width / v[2];
@@ -282,6 +329,7 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
         if (d.data.type === "h1") return `${Math.min(12, r)}px`;
         return `${Math.min(10, r * 1.2)}px`;
       });
+      updateLabelVisibility();
     }
 
     function zoom(event: MouseEvent, d: d3.HierarchyCircularNode<PackNodeData>) {
@@ -294,19 +342,7 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
           return (t) => zoomTo(i(t));
         });
 
-      label
-        .filter(function (n) {
-          return n.parent === focus || (this as SVGTextElement).style.display === "inline";
-        })
-        .transition()
-        .duration(event.altKey ? 2500 : 750)
-        .style("fill-opacity", (n) => (n.parent === focus ? 1 : 0))
-        .on("start", function (this: SVGTextElement, n) {
-          if (n.parent === focus) this.style.display = "inline";
-        })
-        .on("end", function (this: SVGTextElement, n) {
-          if (n.parent !== focus) this.style.display = "none";
-        });
+      updateLabelVisibility();
     }
 
     zoomTo([focus.x, focus.y, focus.r * 2]);
@@ -316,6 +352,8 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
       .scaleExtent([0.25, 8])
       .on("zoom", (event) => {
         zoomRoot.attr("transform", event.transform.toString());
+        currentZoomK = event.transform.k;
+        updateLabelVisibility();
       });
     svg.call(zoomBehavior);
 
@@ -419,7 +457,7 @@ export function OutlineGravityView({ onClose }: OutlineGravityViewProps) {
           重置视图
         </button>
         <span className="text-sm text-gh-text-secondary">
-          圆 packing 视图：滚轮缩放、拖拽画布；点击圆放大；点击 H2 或叶子文件在新标签打开
+          圆 packing 视图：圆心显示一级标题；缩小只显示 H1，放大后显示 H2 及引用文档的 H1；滚轮缩放、拖拽画布；点击圆放大
         </span>
       </div>
       <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden">

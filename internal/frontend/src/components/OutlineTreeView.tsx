@@ -159,11 +159,14 @@ function findRootFiles(outline: Outline): OutlineFile[] {
   return outline.files.filter((f) => !linkedTo.has(f.id));
 }
 
-/** 默认折叠：H2 和链接节点；文档名、H1 展开以展示层级。点击时只展开当前节点。 */
+const MANY_FILES_THRESHOLD = 6;
+
+/** 默认折叠：H2 和链接节点；文档名、H1 展开以展示层级。文件多时默认折叠文件节点以减小宽度。 */
 function collectDefaultCollapsedIds(outline: Outline): Set<string> {
   const ids = new Set<string>();
   const fileIds = new Set(outline.files.map((f) => f.id));
   const safe = (s: string) => s.replace(/-/g, "_");
+  const collapseFiles = outline.files.length > MANY_FILES_THRESHOLD;
 
   function collectFromFile(file: OutlineFile, pathPrefix: string, visited: Set<string>) {
     if (visited.has(file.id)) return;
@@ -194,6 +197,7 @@ function collectDefaultCollapsedIds(outline: Outline): Set<string> {
   const rootFiles = findRootFiles(outline);
   const files = rootFiles.length > 0 ? rootFiles : outline.files;
   for (const file of files) {
+    if (collapseFiles) ids.add(`fl_${safe(file.id)}`);
     collectFromFile(file, "", new Set());
   }
   return ids;
@@ -284,13 +288,36 @@ interface OutlineTreeViewProps {
   onClose: () => void;
 }
 
+const LAYOUT_DIRECTION_KEY = "mo-outline-layout-direction";
+
 export function OutlineTreeView({ onClose }: OutlineTreeViewProps) {
   const [outline, setOutline] = useState<Outline | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  const [layoutDirection, setLayoutDirection] = useState<"H" | "V">(() => {
+    try {
+      const v = localStorage.getItem(LAYOUT_DIRECTION_KEY);
+      if (v === "V" || v === "H") return v;
+    } catch {
+      /* ignore */
+    }
+    return "H";
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<InstanceType<typeof Graph> | null>(null);
+
+  const toggleLayoutDirection = useCallback(() => {
+    setLayoutDirection((prev) => {
+      const next = prev === "H" ? "V" : "H";
+      try {
+        localStorage.setItem(LAYOUT_DIRECTION_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,12 +394,13 @@ export function OutlineTreeView({ onClose }: OutlineTreeViewProps) {
       autoFit: "view",
       layout: {
         type: "mindmap",
-        direction: "H",
+        direction: layoutDirection,
         getHeight: () => 36,
         getWidth: (node: { id: string; data?: { value?: string }; value?: string }) =>
           getNodeWidth((node.value ?? node.data?.value ?? "") as string, node.id === rootId),
         getVGap: () => 24,
-        getHGap: () => 48,
+        getHGap: () =>
+          (outline?.files.length ?? 0) > MANY_FILES_THRESHOLD ? 24 : 48,
         animation: false,
       },
       node: {
@@ -493,7 +521,7 @@ export function OutlineTreeView({ onClose }: OutlineTreeViewProps) {
       graph.destroy();
       graphRef.current = null;
     };
-  }, [outline, collapsedIds, handleNodeClick, toggleCollapse]);
+  }, [outline, collapsedIds, layoutDirection, handleNodeClick, toggleCollapse]);
 
   if (loading) {
     return (
@@ -559,6 +587,14 @@ export function OutlineTreeView({ onClose }: OutlineTreeViewProps) {
           onClick={onClose}
         >
           返回文档
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-gh-border bg-transparent px-2 py-1.5 text-sm text-gh-text-secondary hover:bg-gh-bg-hover"
+          onClick={toggleLayoutDirection}
+          title={layoutDirection === "H" ? "横向布局（文件多时较宽），点击切换为纵向" : "纵向布局（文件上下排列），点击切换为横向"}
+        >
+          {layoutDirection === "H" ? "横向" : "纵向"}
         </button>
         <span className="text-sm text-gh-text-secondary">
           思维导图：以文件为根；孤节点独立成图；链接可多级展开；按文档着色；可折叠节点点击切换，Ctrl/Cmd+点击打开

@@ -28,8 +28,14 @@ function fileLabelId(fileId: string): string {
   return `fl_${fileId.replace(/-/g, "_")}`;
 }
 
-function buildOutlineMermaid(outline: Outline, collapsedFiles: Set<string>): string {
-  const lines: string[] = ["flowchart TB"];
+type FlowDirection = "TB" | "LR";
+
+function buildOutlineMermaid(
+  outline: Outline,
+  collapsedFiles: Set<string>,
+  direction: FlowDirection,
+): string {
+  const lines: string[] = [`flowchart ${direction}`];
   for (const file of outline.files) {
     const flId = fileLabelId(file.id);
     const collapsed = collapsedFiles.has(file.id);
@@ -111,6 +117,8 @@ interface OutlineGraphViewProps {
   onClose: () => void;
 }
 
+const FLOW_DIRECTION_KEY = "mo-outline-graph-direction";
+
 export function OutlineGraphView({ onClose }: OutlineGraphViewProps) {
   const [outline, setOutline] = useState<Outline | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,13 +126,34 @@ export function OutlineGraphView({ onClose }: OutlineGraphViewProps) {
   const [svg, setSvg] = useState("");
   const [showMermaidCode, setShowMermaidCode] = useState(false);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
+  const [flowDirection, setFlowDirection] = useState<FlowDirection>(() => {
+    try {
+      const v = localStorage.getItem(FLOW_DIRECTION_KEY);
+      if (v === "TB" || v === "LR") return v;
+    } catch {
+      /* ignore */
+    }
+    return "TB";
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const outlineRef = useRef<Outline | null>(null);
 
+  const toggleFlowDirection = useCallback(() => {
+    setFlowDirection((prev) => {
+      const next = prev === "TB" ? "LR" : "TB";
+      try {
+        localStorage.setItem(FLOW_DIRECTION_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
   const mermaidCode = useMemo(
-    () => (outline ? buildOutlineMermaid(outline, collapsedFiles) : ""),
-    [outline, collapsedFiles],
+    () => (outline ? buildOutlineMermaid(outline, collapsedFiles, flowDirection) : ""),
+    [outline, collapsedFiles, flowDirection],
   );
 
   useEffect(() => {
@@ -309,6 +338,14 @@ export function OutlineGraphView({ onClose }: OutlineGraphViewProps) {
           title="显示 Mermaid 源码"
         >
           {showMermaidCode ? "隐藏源码" : "显示 Mermaid 源码"}
+        </button>
+        <button
+          type="button"
+          className="bg-transparent border border-gh-border rounded-md px-2 py-1.5 text-gh-text-secondary text-sm hover:bg-gh-bg-hover"
+          onClick={toggleFlowDirection}
+          title={flowDirection === "TB" ? "上下布局（TB），点击切换为左右（LR）" : "左右布局（LR），点击切换为上下（TB）"}
+        >
+          {flowDirection === "TB" ? "上下" : "左右"}
         </button>
         <span className="text-gh-text-secondary text-sm">
           按文件分组，组内一二级标题，组间文件直连；点击文件名展开/折叠，点击标题在新标签页打开
