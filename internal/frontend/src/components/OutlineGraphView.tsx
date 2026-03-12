@@ -13,6 +13,11 @@ function escapeMermaidLabel(text: string): string {
   return `"${text.replace(/"/g, "#quot;").replace(/[\n\r]/g, " ").slice(0, 40)}"`;
 }
 
+/** Safe for Mermaid edge label (no pipe/brackets). */
+function escapeEdgeLabel(text: string, maxLen = 24): string {
+  return text.replace(/["\[\]()|]/g, " ").trim().slice(0, maxLen);
+}
+
 /** Mermaid-safe node id (alphanumeric + underscore). */
 function safeId(fileId: string, index: number): string {
   return `n_${fileId}_${index}`.replace(/-/g, "_");
@@ -25,53 +30,48 @@ function fileLabelId(fileId: string): string {
 
 function buildOutlineMermaid(outline: Outline, collapsedFiles: Set<string>): string {
   const lines: string[] = ["flowchart TB"];
-  for (let f = 0; f < outline.files.length; f++) {
-    const file = outline.files[f];
+  for (const file of outline.files) {
     const flId = fileLabelId(file.id);
     const collapsed = collapsedFiles.has(file.id);
     const prefix = collapsed ? "▶ " : "▼ ";
     const nameEscaped = (prefix + file.name).replace(/"/g, "'");
-    lines.push(`  ${flId}["${nameEscaped}"]`);
+    lines.push(`  subgraph ${flId}["${nameEscaped}"]`);
     if (!collapsed) {
       for (let i = 0; i < file.headings.length; i++) {
         const h = file.headings[i];
         const nid = safeId(file.id, i);
         const label = escapeMermaidLabel(h.text);
-        lines.push(`  ${nid}[${label}]`);
+        lines.push(`    ${nid}[${label}]`);
       }
-      if (file.headings.length > 0) {
-        lines.push(`  ${flId} --> ${safeId(file.id, 0)}`);
-      }
-      // 方案 A：h2 链式连接（h1 → h2a → h2b → h2c），减少横向宽度
-      for (let i = 0; i < file.headings.length; i++) {
-        if (file.headings[i].level !== 1) continue;
-        const fromId = safeId(file.id, i);
-        const siblings: number[] = [];
-        for (let j = i + 1; j < file.headings.length; j++) {
-          if (file.headings[j].level === 1) break;
-          siblings.push(j);
-        }
-        if (siblings.length > 0) {
-          lines.push(`  ${fromId} --> ${safeId(file.id, siblings[0])}`);
-          for (let k = 0; k < siblings.length - 1; k++) {
-            lines.push(
-              `  ${safeId(file.id, siblings[k])} --> ${safeId(file.id, siblings[k + 1])}`,
-            );
-          }
-        }
-      }
-      // 每个标题下的关联文件：从对应标题指向被引用文件的文件名节点
-      const fileIdsInOutline = new Set(outline.files.map((x) => x.id));
-      for (let i = 0; i < file.headings.length; i++) {
-        const linkedIds = file.headings[i].linkedFileIds;
-        if (!linkedIds?.length) continue;
-        const fromId = safeId(file.id, i);
-        for (const targetId of linkedIds) {
-          if (fileIdsInOutline.has(targetId)) {
-            lines.push(`  ${fromId} --> ${fileLabelId(targetId)}`);
-          }
+    }
+    lines.push(`  end`);
+  }
+  // 组与组：文件到文件直连（合并同文件对的多条边），边标签优先用链接文本、否则 H1、否则目标文件名
+  const fileIdsInOutline = new Set(outline.files.map((x) => x.id));
+  const fileById = new Map(outline.files.map((f) => [f.id, f]));
+  const emittedEdges = new Set<string>();
+  for (const file of outline.files) {
+    let currentH1 = "";
+    const linkedToLabel = new Map<string, string>();
+    for (const h of file.headings) {
+      if (h.level === 1) currentH1 = h.text.trim();
+      const linked = h.linkedFiles ?? h.linkedFileIds?.map((id) => ({ fileId: id, label: "" })) ?? [];
+      for (const lf of linked) {
+        const tid = lf.fileId;
+        if (fileIdsInOutline.has(tid) && tid !== file.id && !linkedToLabel.has(tid)) {
+          const label =
+            lf.label?.trim() || currentH1 || (fileById.get(tid)?.name ?? tid);
+          linkedToLabel.set(tid, label);
         }
       }
+    }
+    const flFrom = fileLabelId(file.id);
+    for (const [targetId, label] of linkedToLabel) {
+      const edgeKey = `${file.id}->${targetId}`;
+      if (emittedEdges.has(edgeKey)) continue;
+      emittedEdges.add(edgeKey);
+      const lab = escapeEdgeLabel(label || (fileById.get(targetId)?.name ?? targetId));
+      lines.push(`  ${flFrom} -->|${lab}| ${fileLabelId(targetId)}`);
     }
   }
   return lines.join("\n");
@@ -134,6 +134,7 @@ export function OutlineGraphView({ onClose }: OutlineGraphViewProps) {
         if (!cancelled) {
           setOutline(data);
           outlineRef.current = data;
+          setCollapsedFiles(new Set(data.files.map((f) => f.id)));
           setError(null);
         }
       })
@@ -310,7 +311,7 @@ export function OutlineGraphView({ onClose }: OutlineGraphViewProps) {
           {showMermaidCode ? "隐藏源码" : "显示 Mermaid 源码"}
         </button>
         <span className="text-gh-text-secondary text-sm">
-          按文件分组，展示一二级标题；点击文件名展开/折叠，点击标题在新标签页打开
+          按文件分组，组内一二级标题，组间文件直连；点击文件名展开/折叠，点击标题在新标签页打开
         </span>
       </div>
       {showMermaidCode && (

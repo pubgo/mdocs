@@ -45,9 +45,15 @@ export async function fetchGraph(): Promise<LinkGraph> {
   return res.json();
 }
 
+export interface OutlineLinkedFile {
+  fileId: string;
+  label?: string;
+}
+
 export interface OutlineHeading {
   level: number;
   text: string;
+  linkedFiles?: OutlineLinkedFile[];
   linkedFileIds?: string[];
 }
 

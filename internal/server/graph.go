@@ -236,12 +236,20 @@ func handleGraph(state *State) http.HandlerFunc {
 	}
 }
 
+// OutlineLinkedFile is a file linked from a heading section, with optional link text.
+type OutlineLinkedFile struct {
+	FileID string `json:"fileId"`
+	Label  string `json:"label,omitempty"` // link text from [text](url), empty if none
+}
+
 // OutlineHeading is a single H1 or H2 heading.
-// LinkedFileIDs are file IDs linked from that heading's section (content until next heading).
+// LinkedFiles are files linked from that heading's section, with link labels.
+// LinkedFileIDs is deprecated, use LinkedFiles for full data.
 type OutlineHeading struct {
-	Level         int      `json:"level"`
-	Text          string   `json:"text"`
-	LinkedFileIDs []string `json:"linkedFileIds,omitempty"`
+	Level         int                 `json:"level"`
+	Text          string              `json:"text"`
+	LinkedFiles   []OutlineLinkedFile `json:"linkedFiles,omitempty"`
+	LinkedFileIDs []string            `json:"linkedFileIds,omitempty"` // kept for backward compat
 }
 
 // OutlineNode is a file with its H1/H2 headings for the outline graph.
@@ -293,21 +301,27 @@ func (s *State) extractHeadingsWithLinks(content string, baseDir string) []Outli
 			sectionEnd = matches[i+1][0]
 		}
 		section := content[sectionStart:sectionEnd]
-		linkedIDs := make(map[string]struct{})
+		linkedMap := make(map[string]string) // fileID -> first link label
 		for _, pair := range ExtractMarkdownLinks(section) {
-			_, hrefPath := pair[0], pair[1]
+			linkText, hrefPath := pair[0], pair[1]
 			if target := s.findFileByHrefLocked(baseDir, hrefPath); target != nil {
-				linkedIDs[target.ID] = struct{}{}
+				if _, ok := linkedMap[target.ID]; !ok {
+					linkedMap[target.ID] = strings.TrimSpace(linkText)
+				}
 			}
 		}
-		ids := make([]string, 0, len(linkedIDs))
-		for id := range linkedIDs {
+		linkedFiles := make([]OutlineLinkedFile, 0, len(linkedMap))
+		ids := make([]string, 0, len(linkedMap))
+		for id, label := range linkedMap {
+			linkedFiles = append(linkedFiles, OutlineLinkedFile{FileID: id, Label: label})
 			ids = append(ids, id)
 		}
+		sort.Slice(linkedFiles, func(i, j int) bool { return linkedFiles[i].FileID < linkedFiles[j].FileID })
 		sort.Strings(ids)
 		out = append(out, OutlineHeading{
 			Level:         level,
 			Text:          text,
+			LinkedFiles:   linkedFiles,
 			LinkedFileIDs: ids,
 		})
 	}
