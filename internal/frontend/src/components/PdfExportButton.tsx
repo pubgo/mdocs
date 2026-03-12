@@ -27,36 +27,60 @@ export function PdfExportButton({ articleRef, fileName }: PdfExportButtonProps) 
     const filename = fileName.endsWith(".pdf") ? fileName : `${fileName.replace(/\.(md|mdx)$/i, "")}.pdf`;
 
     try {
-      const canvas = await html2canvas(article, {
+      // 克隆并修改链接颜色，使 PDF 中更醒目
+      const clone = article.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll("img[src]").forEach((img) => {
+        const src = img.getAttribute("src");
+        if (src) img.setAttribute("src", toAbsoluteUrl(src));
+      });
+      clone.querySelectorAll("a[href]").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (href && !href.startsWith("#")) a.setAttribute("href", toAbsoluteUrl(href));
+      });
+      const linkStyle = document.createElement("style");
+      linkStyle.textContent =
+        "a[href^='http'] { color: #0550ae !important; text-decoration: underline !important; }";
+      clone.appendChild(linkStyle);
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText =
+        "position:fixed;top:0;left:0;width:210mm;max-width:100%;z-index:-9999;opacity:0.01;pointer-events:none;background:#fff;";
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         logging: false,
       });
-      // 在 canvas 上绘制链接高亮（浅蓝背景），再转图片
-      const articleRect = article.getBoundingClientRect();
-      const canvasScaleX = canvas.width / article.offsetWidth;
-      const canvasScaleY = canvas.height / article.offsetHeight;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.save();
-        ctx.fillStyle = "rgba(200, 220, 255, 0.45)";
-        article.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
+      const articleRect = clone.getBoundingClientRect();
+      const contentWidth = 210 - 2 * MARGIN;
+      const scaleX = contentWidth / clone.offsetWidth;
+      const scaleY = (canvas.height * contentWidth) / canvas.width / clone.offsetHeight;
+      const headingsData = [...clone.querySelectorAll<HTMLHeadingElement>("h1, h2, h3")].map((h) => ({
+        level: parseInt(h.tagName[1], 10) - 1,
+        title: h.textContent?.trim() || "",
+      }));
+      const linksData = [...clone.querySelectorAll<HTMLAnchorElement>("a[href]")]
+        .filter((a) => {
           const href = a.getAttribute("href");
-          if (!href || href.startsWith("#")) return;
+          if (!href || href.startsWith("#")) return false;
           const url = toAbsoluteUrl(href);
-          if (!url.startsWith("http://") && !url.startsWith("https://")) return;
+          return url.startsWith("http://") || url.startsWith("https://");
+        })
+        .map((a) => {
           const rect = a.getBoundingClientRect();
-          const x = (rect.left - articleRect.left) * canvasScaleX;
-          const y = (rect.top - articleRect.top) * canvasScaleY;
-          const w = rect.width * canvasScaleX;
-          const h = rect.height * canvasScaleY;
-          if (w > 0 && h > 0) ctx.fillRect(x, y, w, h);
+          return {
+            url: toAbsoluteUrl(a.getAttribute("href")!),
+            x: rect.left - articleRect.left,
+            y: rect.top - articleRect.top,
+            w: rect.width,
+            h: rect.height,
+          };
         });
-        ctx.restore();
-      }
+      wrapper.remove();
+
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pageWidth = 210; // A4 宽度 mm
-      const contentWidth = pageWidth - 2 * MARGIN;
       const contentHeight = (canvas.height * contentWidth) / canvas.width;
       const pageHeight = contentHeight + 2 * MARGIN; // 单页不分页
 
@@ -64,11 +88,8 @@ export function PdfExportButton({ articleRef, fileName }: PdfExportButtonProps) 
       pdf.addImage(imgData, "JPEG", MARGIN, MARGIN, contentWidth, contentHeight);
 
       // 提取标题并添加 PDF 书签（大纲）
-      const headings = article.querySelectorAll<HTMLHeadingElement>("h1, h2, h3");
-      const parentStack: (unknown | null)[] = [null, null, null]; // h1, h2, h3 的父级
-      headings.forEach((h) => {
-        const level = parseInt(h.tagName[1], 10) - 1; // 0=h1, 1=h2, 2=h3
-        const title = h.textContent?.trim() || "";
+      const parentStack: (unknown | null)[] = [null, null, null];
+      headingsData.forEach(({ level, title }) => {
         if (!title) return;
         const parent = level > 0 ? parentStack[level - 1] : null;
         const item = pdf.outline.add(parent, title, { pageNumber: 1 });
@@ -76,20 +97,11 @@ export function PdfExportButton({ articleRef, fileName }: PdfExportButtonProps) 
         for (let i = level + 1; i < 3; i++) parentStack[i] = null;
       });
 
-      // 添加可点击链接（高亮已在 canvas 中绘制）
-      const scaleX = contentWidth / article.offsetWidth;
-      const scaleY = contentHeight / article.offsetHeight;
-      article.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((a) => {
-        const href = a.getAttribute("href");
-        if (!href || href.startsWith("#")) return;
-        const url = toAbsoluteUrl(href);
-        if (!url.startsWith("http://") && !url.startsWith("https://")) return;
-        const rect = a.getBoundingClientRect();
-        const x = MARGIN + (rect.left - articleRect.left) * scaleX;
-        const y = MARGIN + (rect.top - articleRect.top) * scaleY;
-        const w = rect.width * scaleX;
-        const h = rect.height * scaleY;
-        if (w > 0 && h > 0) pdf.link(x, y, w, h, { url });
+      // 添加可点击链接
+      linksData.forEach(({ url, x, y, w, h }) => {
+        if (w > 0 && h > 0) {
+          pdf.link(MARGIN + x * scaleX, MARGIN + y * scaleY, w * scaleX, h * scaleY, { url });
+        }
       });
 
       pdf.save(filename);
