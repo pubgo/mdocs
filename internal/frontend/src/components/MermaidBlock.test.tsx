@@ -83,6 +83,25 @@ describe("MermaidBlock", () => {
     await waitFor(() => {
       expect(screen.getByTitle("Copy image")).toBeInTheDocument();
     });
+    expect(screen.getByTitle("Fullscreen")).toBeInTheDocument();
+  });
+
+  it("normalizes rendered svg to fit container width", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: '<svg width="240" height="120"><g><text>diagram</text></g></svg>',
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    const { container } = render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      const svg = container.querySelector("svg");
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute("width")).toBe("100%");
+      expect(svg?.getAttribute("viewBox")).toBe("0 0 240 120");
+      expect(svg?.getAttribute("preserveAspectRatio")).toBe("xMinYMin meet");
+    });
   });
 
   it("does not show image copy button when rendering fails", async () => {
@@ -94,6 +113,207 @@ describe("MermaidBlock", () => {
       expect(screen.getByTitle("Copy code")).toBeInTheDocument();
     });
     expect(screen.queryByTitle("Copy image")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Fullscreen")).not.toBeInTheDocument();
+  });
+
+  it("calls requestFullscreen on fullscreen button click", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>diagram</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    const requestFullscreenMock = vi.fn().mockResolvedValue(undefined);
+    const originalRequestFullscreen = HTMLElement.prototype.requestFullscreen;
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: requestFullscreenMock,
+      configurable: true,
+      writable: true,
+    });
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Fullscreen")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Fullscreen"));
+
+    await waitFor(() => {
+      expect(requestFullscreenMock).toHaveBeenCalledTimes(1);
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: originalRequestFullscreen,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it("supports zoom and pan interactions in fullscreen", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>diagram</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    let fullscreenElement: Element | null = null;
+    const originalFullscreenDescriptor = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      get: () => fullscreenElement,
+      configurable: true,
+    });
+
+    const requestFullscreenMock = vi.fn().mockImplementation(function (this: HTMLElement) {
+      fullscreenElement = this;
+      document.dispatchEvent(new Event("fullscreenchange"));
+      return Promise.resolve();
+    });
+    const originalRequestFullscreen = HTMLElement.prototype.requestFullscreen;
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: requestFullscreenMock,
+      configurable: true,
+      writable: true,
+    });
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Fullscreen")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Fullscreen"));
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Zoom in")).toBeInTheDocument();
+    });
+
+    const zoomLevel = screen.getByTitle("Zoom level");
+    expect(zoomLevel).toHaveTextContent("100%");
+
+    fireEvent.click(screen.getByTitle("Zoom in"));
+    await waitFor(() => {
+      expect(zoomLevel).toHaveTextContent("110%");
+    });
+
+    fireEvent.click(screen.getByTitle("Zoom out"));
+    await waitFor(() => {
+      expect(zoomLevel).toHaveTextContent("100%");
+    });
+
+    for (let i = 0; i < 120; i += 1) {
+      fireEvent.click(screen.getByTitle("Zoom in"));
+    }
+    await waitFor(() => {
+      expect(zoomLevel).toHaveTextContent("1000%");
+    });
+
+    const surface = screen.getByTestId("mermaid-interaction-surface");
+    const canvas = screen.getByTestId("mermaid-pan-canvas");
+
+    fireEvent.mouseDown(surface, { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(surface, { clientX: 140, clientY: 125 });
+    fireEvent.mouseUp(surface);
+
+    await waitFor(() => {
+      expect(canvas.getAttribute("style") || "").toContain("translate(40px, 25px)");
+    });
+
+    fireEvent.click(screen.getByTitle("Reset view"));
+    await waitFor(() => {
+      expect(zoomLevel).toHaveTextContent("100%");
+      expect(canvas.getAttribute("style") || "").toContain("translate(0px, 0px)");
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: originalRequestFullscreen,
+      configurable: true,
+      writable: true,
+    });
+
+    if (originalFullscreenDescriptor) {
+      Object.defineProperty(document, "fullscreenElement", originalFullscreenDescriptor);
+    } else {
+      delete (document as { fullscreenElement?: Element | null }).fullscreenElement;
+    }
+  });
+
+  it("uses larger default fullscreen zoom for complex mermaid diagrams", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>diagram</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    let fullscreenElement: Element | null = null;
+    const originalFullscreenDescriptor = Object.getOwnPropertyDescriptor(document, "fullscreenElement");
+    Object.defineProperty(document, "fullscreenElement", {
+      get: () => fullscreenElement,
+      configurable: true,
+    });
+
+    const requestFullscreenMock = vi.fn().mockImplementation(function (this: HTMLElement) {
+      fullscreenElement = this;
+      document.dispatchEvent(new Event("fullscreenchange"));
+      return Promise.resolve();
+    });
+    const originalRequestFullscreen = HTMLElement.prototype.requestFullscreen;
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: requestFullscreenMock,
+      configurable: true,
+      writable: true,
+    });
+
+    const complexCode = [
+      "graph TD",
+      ...Array.from({ length: 80 }, (_, i) => `N${i}[Node ${i}] --> N${i + 1}[Node ${i + 1}]`),
+    ].join("\n");
+
+    render(<MermaidBlock code={complexCode} />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Fullscreen")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTitle("Fullscreen"));
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Zoom level")).toHaveTextContent("200%");
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      value: originalRequestFullscreen,
+      configurable: true,
+      writable: true,
+    });
+
+    if (originalFullscreenDescriptor) {
+      Object.defineProperty(document, "fullscreenElement", originalFullscreenDescriptor);
+    } else {
+      delete (document as { fullscreenElement?: Element | null }).fullscreenElement;
+    }
+  });
+
+  it("keeps inline mermaid width within markdown container", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>diagram</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    const complexCode = [
+      "graph TD",
+      ...Array.from({ length: 80 }, (_, i) => `N${i}[Node ${i}] --> N${i + 1}[Node ${i + 1}]`),
+    ].join("\n");
+
+    render(<MermaidBlock code={complexCode} />);
+
+    await waitFor(() => {
+      const canvas = screen.getByTestId("mermaid-pan-canvas");
+      const style = canvas.getAttribute("style") || "";
+      expect(style).toContain("width: 100%");
+      expect(style).not.toContain("220%");
+    });
   });
 
   it("calls navigator.clipboard.write on image copy button click", async () => {

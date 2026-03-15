@@ -41,9 +41,79 @@ function getMermaidTheme(): "dark" | "default" {
 
 let mermaidCounter = 0;
 let mermaidQueue: Promise<void> = Promise.resolve();
+const MERMAID_MIN_ZOOM = 0.5;
+const MERMAID_MAX_ZOOM = 10;
+const MERMAID_ZOOM_STEP = 0.1;
+
+function estimateMermaidComplexity(code: string): number {
+  const lines = code
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0).length;
+  const edgeTokens = (code.match(/-->|==>|-.->|---|~~~|<-->/g) ?? []).length;
+  const nodeTokens = (code.match(/\[[^\]]+\]|\([^\)]+\)|\{[^\}]+\}/g) ?? []).length;
+  return lines + edgeTokens * 2 + nodeTokens;
+}
+
+function getMermaidRenderScale(complexity: number, isFullscreen: boolean): number {
+  if (!isFullscreen) {
+    if (complexity >= 260) return 0.72;
+    if (complexity >= 180) return 0.8;
+    if (complexity >= 120) return 0.88;
+    if (complexity >= 70) return 0.94;
+    return 1;
+  }
+  if (complexity >= 220) return 2.4;
+  if (complexity >= 140) return 2.0;
+  if (complexity >= 80) return 1.6;
+  if (complexity >= 40) return 1.3;
+  return 1;
+}
+
+function getDefaultFullscreenZoom(complexity: number): number {
+  if (complexity >= 220) return 2.0;
+  if (complexity >= 140) return 1.7;
+  if (complexity >= 80) return 1.4;
+  if (complexity >= 40) return 1.2;
+  return 1;
+}
 
 function cleanupMermaidErrors() {
   document.querySelectorAll("[id^='dmermaid-']").forEach((el) => el.remove());
+}
+
+function normalizeMermaidSvg(svg: string): string {
+  try {
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const svgEl = doc.documentElement;
+    if (!svgEl || svgEl.tagName.toLowerCase() !== "svg") {
+      return svg;
+    }
+
+    const widthAttr = svgEl.getAttribute("width");
+    const heightAttr = svgEl.getAttribute("height");
+    const viewBox = svgEl.getAttribute("viewBox");
+
+    if (!viewBox && widthAttr && heightAttr) {
+      const width = parseFloat(widthAttr);
+      const height = parseFloat(heightAttr);
+      if (width > 0 && height > 0) {
+        svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      }
+    }
+
+    const prevStyle = svgEl.getAttribute("style") || "";
+    const normalizedStyle = "width:100%;height:auto;max-width:100%;";
+
+    svgEl.setAttribute("preserveAspectRatio", "xMinYMin meet");
+    svgEl.setAttribute("width", "100%");
+    svgEl.removeAttribute("height");
+    svgEl.setAttribute("style", prevStyle ? `${prevStyle};${normalizedStyle}` : normalizedStyle);
+
+    return new XMLSerializer().serializeToString(svgEl);
+  } catch {
+    return svg;
+  }
 }
 
 async function renderMermaid(code: string, width?: number): Promise<string> {
@@ -78,17 +148,141 @@ async function renderMermaid(code: string, width?: number): Promise<string> {
 
 export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const mermaidComplexity = useMemo(() => estimateMermaidComplexity(code), [code]);
+  const defaultFullscreenZoom = useMemo(
+    () => getDefaultFullscreenZoom(mermaidComplexity),
+    [mermaidComplexity],
+  );
+  const blockRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const prevFullscreenRef = useRef(false);
+
+  const clampZoom = useCallback(
+    (nextZoom: number) => Math.max(MERMAID_MIN_ZOOM, Math.min(MERMAID_MAX_ZOOM, nextZoom)),
+    [],
+  );
+
+  const updateZoom = useCallback(
+    (delta: number) => {
+      setZoom((prev) => clampZoom(prev + delta));
+    },
+    [clampZoom],
+  );
+
+  const resetView = useCallback(() => {
+    setZoom(isFullscreen ? defaultFullscreenZoom : 1);
+    setPan({ x: 0, y: 0 });
+  }, [defaultFullscreenZoom, isFullscreen]);
+
+  const handleFullscreenToggle = useCallback(async () => {
+    const block = blockRef.current;
+    if (!block) return;
+
+    try {
+      if (document.fullscreenElement === block) {
+        await document.exitFullscreen?.();
+        return;
+      }
+      await block.requestFullscreen?.();
+    } catch {
+      // Fullscreen API may fail depending on browser or context
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === blockRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (isFullscreen && !prevFullscreenRef.current) {
+      setZoom(defaultFullscreenZoom);
+      setPan({ x: 0, y: 0 });
+    }
+    if (!isFullscreen && prevFullscreenRef.current) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+    prevFullscreenRef.current = isFullscreen;
+  }, [defaultFullscreenZoom, isFullscreen]);
+
+  const handleSurfaceWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      if (!isFullscreen) return;
+      e.preventDefault();
+      updateZoom(e.deltaY > 0 ? -MERMAID_ZOOM_STEP : MERMAID_ZOOM_STEP);
+    },
+    [isFullscreen, updateZoom],
+  );
+
+  const handleSurfaceMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isFullscreen || e.button !== 0) return;
+      e.preventDefault();
+      panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+    },
+    [isFullscreen, pan.x, pan.y],
+  );
+
+  const handleSurfaceMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isFullscreen || !panStartRef.current) return;
+      const dx = e.clientX - panStartRef.current.x;
+      const dy = e.clientY - panStartRef.current.y;
+      setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy });
+    },
+    [isFullscreen],
+  );
+
+  const handleSurfaceMouseUp = useCallback(() => {
+    panStartRef.current = null;
+  }, []);
+
+  const resolveRenderWidth = useCallback(() => {
+    const container = containerRef.current;
+    const markdownBody = container?.closest(".markdown-body") as HTMLElement | null;
+
+    const widthCandidates = [
+      container?.clientWidth,
+      container?.offsetWidth,
+      container?.parentElement?.clientWidth,
+      markdownBody?.clientWidth,
+      isFullscreen ? window.innerWidth - 48 : undefined,
+    ];
+
+    const width = widthCandidates.find((candidate): candidate is number => {
+      return typeof candidate === "number" && candidate > 0;
+    });
+
+    const baseWidth = width ?? 800;
+    const scale = getMermaidRenderScale(mermaidComplexity, isFullscreen);
+    const scaledWidth = Math.round(baseWidth * scale);
+    if (isFullscreen) {
+      const maxWidth = Math.max(window.innerWidth * 6, baseWidth);
+      return Math.max(baseWidth, Math.min(scaledWidth, maxWidth));
+    }
+
+    const minWidth = Math.max(280, Math.round(baseWidth * 0.55));
+    return Math.min(baseWidth, Math.max(minWidth, scaledWidth));
+  }, [isFullscreen, mermaidComplexity]);
 
   useEffect(() => {
     let cancelled = false;
 
     const doRender = () => {
-      const width = containerRef.current?.offsetWidth;
+      const width = resolveRenderWidth();
       mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
       renderMermaid(code, width)
         .then((renderedSvg) => {
-          if (!cancelled) setSvg(renderedSvg);
+          if (!cancelled) setSvg(normalizeMermaidSvg(renderedSvg));
         })
         .catch(() => {
           if (!cancelled) setSvg("");
@@ -104,17 +298,65 @@ export function MermaidBlock({ code }: { code: string }) {
       attributeFilter: ["data-theme"],
     });
 
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => doRender())
+        : null;
+    if (resizeObserver && containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
       cancelled = true;
       observer.disconnect();
+      resizeObserver?.disconnect();
     };
-  }, [code]);
+  }, [code, isFullscreen, resolveRenderWidth]);
 
   if (svg) {
+    const canvasStyle = isFullscreen
+      ? {
+        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+        transformOrigin: "center center",
+      }
+      : {
+        width: "100%",
+        maxWidth: "100%",
+        transformOrigin: "top left",
+      };
+
     return (
-      <div ref={containerRef} className="relative group">
-        <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />
+      <div ref={blockRef} className="relative group mermaid-block">
+        <div
+          ref={containerRef}
+          data-testid="mermaid-interaction-surface"
+          className={`mermaid-render ${isFullscreen ? "mermaid-render--interactive cursor-grab active:cursor-grabbing select-none" : "overflow-x-auto"}`}
+          onWheel={handleSurfaceWheel}
+          onMouseDown={handleSurfaceMouseDown}
+          onMouseMove={handleSurfaceMouseMove}
+          onMouseUp={handleSurfaceMouseUp}
+          onMouseLeave={handleSurfaceMouseUp}
+        >
+          <div
+            data-testid="mermaid-pan-canvas"
+            className="mermaid-canvas"
+            style={canvasStyle}
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        </div>
+        {isFullscreen && (
+          <MermaidZoomControls
+            zoom={zoom}
+            onZoomIn={() => updateZoom(MERMAID_ZOOM_STEP)}
+            onZoomOut={() => updateZoom(-MERMAID_ZOOM_STEP)}
+            onReset={resetView}
+          />
+        )}
         <MermaidImageCopyButton svg={svg} />
+        <MermaidFullscreenButton
+          isFullscreen={isFullscreen}
+          onToggle={() => void handleFullscreenToggle()}
+        />
         <CodeBlockCopyButton code={code} themed />
       </div>
     );
@@ -126,6 +368,82 @@ export function MermaidBlock({ code }: { code: string }) {
       </pre>
       <CodeBlockCopyButton code={code} />
     </div>
+  );
+}
+
+function MermaidZoomControls({
+  zoom,
+  onZoomIn,
+  onZoomOut,
+  onReset,
+}: {
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md border border-gh-border bg-gh-bg-secondary/90 p-1 backdrop-blur-xs">
+      <button
+        className={`flex items-center justify-center rounded-md p-1 cursor-pointer transition-all duration-150 border ${themedButtonStyle}`}
+        onClick={onZoomOut}
+        title="Zoom out"
+      >
+        <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3 7.25a.75.75 0 0 0 0 1.5h10a.75.75 0 0 0 0-1.5z" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center rounded-md p-1 cursor-pointer transition-all duration-150 border ${themedButtonStyle}`}
+        onClick={onZoomIn}
+        title="Zoom in"
+      >
+        <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 2.25a.75.75 0 0 1 .75.75v4.25H13a.75.75 0 0 1 0 1.5H8.75V13a.75.75 0 0 1-1.5 0V8.75H3a.75.75 0 0 1 0-1.5h4.25V3A.75.75 0 0 1 8 2.25" />
+        </svg>
+      </button>
+      <button
+        className={`flex items-center justify-center rounded-md p-1 cursor-pointer transition-all duration-150 border ${themedButtonStyle}`}
+        onClick={onReset}
+        title="Reset view"
+      >
+        <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 2.5a5.5 5.5 0 1 1-5.18 7.347.75.75 0 0 1 1.414-.507A4 4 0 1 0 4.78 5.166L6.22 6.61a.75.75 0 0 1-1.06 1.06L2.53 5.04a.75.75 0 0 1 0-1.06L5.16 1.35a.75.75 0 1 1 1.06 1.06L4.84 3.79A5.48 5.48 0 0 1 8 2.5" />
+        </svg>
+      </button>
+      <span
+        className="px-2 text-xs text-gh-text-secondary tabular-nums min-w-12 text-center"
+        title="Zoom level"
+      >
+        {Math.round(zoom * 100)}%
+      </span>
+    </div>
+  );
+}
+
+function MermaidFullscreenButton({
+  isFullscreen,
+  onToggle,
+}: {
+  isFullscreen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      className={`absolute right-[4.5rem] top-2 flex items-center justify-center rounded-md p-1 cursor-pointer transition-all duration-150 border ${themedButtonStyle} ${isFullscreen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+      onClick={onToggle}
+      title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+    >
+      {isFullscreen ? (
+        <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M6 2a.75.75 0 0 1 0 1.5H3.5V6a.75.75 0 0 1-1.5 0V2zm10 0v4a.75.75 0 0 1-1.5 0V3.5H10A.75.75 0 0 1 10 2zM2 10a.75.75 0 0 1 1.5 0v2.5H6a.75.75 0 0 1 0 1.5H2zm13.25-.75A.75.75 0 0 1 16 10v4h-4a.75.75 0 0 1 0-1.5h2.5V10a.75.75 0 0 1 .75-.75" />
+        </svg>
+      ) : (
+        <svg className="size-4" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2.75 1A.75.75 0 0 1 3.5 1.75V4.5h2.75a.75.75 0 0 1 0 1.5H2V1.75A.75.75 0 0 1 2.75 1m10.5 0a.75.75 0 0 1 .75.75V6h-4.25a.75.75 0 0 1 0-1.5H12.5V1.75a.75.75 0 0 1 .75-.75M2 10h4.25a.75.75 0 0 1 0 1.5H3.5v2.75a.75.75 0 0 1-1.5 0zm12 0v4.25a.75.75 0 0 1-1.5 0V11.5H9.75a.75.75 0 0 1 0-1.5z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -299,7 +617,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
             .then((result) => {
               if (!cancelled) setHtml(result);
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       });
     return () => {
@@ -353,7 +671,7 @@ function RawView({ content }: { content: string }) {
             .then((result) => {
               if (!cancelled) setHtml(result);
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       });
     return () => {

@@ -41,6 +41,11 @@ export function PdfExportButton({ articleRef, fileName }: PdfExportButtonProps) 
       linkStyle.textContent =
         "a[href^='http'] { color: #0550ae !important; text-decoration: underline !important; }";
       clone.appendChild(linkStyle);
+      const mermaidStyle = document.createElement("style");
+      mermaidStyle.textContent =
+        ".mermaid-block .mermaid-render svg { width: 100% !important; max-width: 100% !important; height: auto !important; } .mermaid-block .mermaid-render svg text, .mermaid-block .mermaid-render .nodeLabel, .mermaid-block .mermaid-render .edgeLabel { font-size: 13px !important; }";
+      clone.appendChild(mermaidStyle);
+      const hasMermaid = clone.querySelector(".mermaid-block .mermaid-render svg") !== null;
       const wrapper = document.createElement("div");
       wrapper.style.cssText =
         "position:fixed;top:0;left:0;width:210mm;max-width:100%;z-index:-9999;opacity:0.01;pointer-events:none;background:#fff;";
@@ -48,7 +53,7 @@ export function PdfExportButton({ articleRef, fileName }: PdfExportButtonProps) 
       document.body.appendChild(wrapper);
 
       const canvas = await html2canvas(clone, {
-        scale: 2,
+        scale: hasMermaid ? 3 : 2,
         useCORS: true,
         logging: false,
       });
