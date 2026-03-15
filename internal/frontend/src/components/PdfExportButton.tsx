@@ -106,10 +106,42 @@ async function exportAsSinglePagePdf(article: HTMLElement, filename: string): Pr
         }
     }
 
-    // Build PDF outline (bookmarks) from heading elements
+    // Build PDF outline (bookmarks) from heading elements.
+    // jsPDF's outline.renderItems hardcodes Y=0 (page top), so we monkey-patch
+    // it to read a custom `destY` from options for in-page positioning.
     const headings = article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
     if (headings.length > 0) {
-        // Stack tracks the last outline item at each heading level (1-6)
+        // Patch renderItems to use options.destY for the /XYZ destination
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const outline = pdf.outline as any;
+        outline.renderItems = function (this: any, node: any) {
+            const getVCS = this.ctx.pdf.internal.getVerticalCoordinateString;
+            for (let i = 0; i < node.children.length; i++) {
+                const item = node.children[i];
+                this.objStart(item);
+                this.line("/Title " + this.makeString(item.title));
+                this.line("/Parent " + this.makeRef(node));
+                if (i > 0) this.line("/Prev " + this.makeRef(node.children[i - 1]));
+                if (i < node.children.length - 1) this.line("/Next " + this.makeRef(node.children[i + 1]));
+                if (item.children.length > 0) {
+                    this.line("/First " + this.makeRef(item.children[0]));
+                    this.line("/Last " + this.makeRef(item.children[item.children.length - 1]));
+                }
+                const count = this.count_r({ count: 0 }, item);
+                if (count > 0) this.line("/Count " + count);
+                if (item.options?.pageNumber) {
+                    const info = this.ctx.pdf.internal.getPageInfo(item.options.pageNumber);
+                    const yPt = item.options.destY != null ? getVCS(item.options.destY) : getVCS(0);
+                    this.line("/Dest [" + info.objId + " 0 R /XYZ 0 " + yPt + " 0]");
+                }
+                this.objEnd();
+            }
+            for (let z = 0; z < node.children.length; z++) {
+                this.renderItems(node.children[z]);
+            }
+        };
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+
         const stack: { level: number; item: ReturnType<typeof pdf.outline.add> }[] = [];
 
         for (const heading of headings) {
@@ -117,7 +149,10 @@ async function exportAsSinglePagePdf(article: HTMLElement, filename: string): Pr
             const title = heading.textContent?.trim();
             if (!title) continue;
 
-            // Find parent: the most recent item with a smaller level number
+            // Calculate Y position in PDF coordinates (mm from top)
+            const headingRect = heading.getBoundingClientRect();
+            const destY = PDF_MARGIN_MM + (headingRect.top - articleRect.top) * scaleY;
+
             let parent: ReturnType<typeof pdf.outline.add> | null = null;
             for (let i = stack.length - 1; i >= 0; i--) {
                 if (stack[i].level < level) {
@@ -126,8 +161,7 @@ async function exportAsSinglePagePdf(article: HTMLElement, filename: string): Pr
                 }
             }
 
-            const item = pdf.outline.add(parent, title, { pageNumber: 1 });
-            // Remove deeper entries from stack
+            const item = pdf.outline.add(parent, title, { pageNumber: 1, destY } as never);
             while (stack.length > 0 && stack[stack.length - 1].level >= level) {
                 stack.pop();
             }
