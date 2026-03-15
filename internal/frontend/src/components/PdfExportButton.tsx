@@ -73,7 +73,68 @@ async function exportAsSinglePagePdf(article: HTMLElement, filename: string): Pr
         format: [PDF_PAGE_WIDTH_MM, pageHeightMm],
     });
 
+    // Set PDF document title
+    const docTitle = filename.replace(/\.pdf$/i, "");
+    pdf.setProperties({ title: docTitle });
+
     pdf.addImage(dataUrl, "JPEG", PDF_MARGIN_MM, PDF_MARGIN_MM, contentWidthMm, contentHeightMm);
+
+    // Add clickable link annotations over the image.
+    // Map each <a> element's bounding rect from pixel coords to PDF mm coords.
+    const articleRect = article.getBoundingClientRect();
+    const scaleX = contentWidthMm / articleRect.width;
+    const scaleY = contentHeightMm / articleRect.height;
+
+    const links = article.querySelectorAll<HTMLAnchorElement>("a[href]");
+    for (const a of links) {
+        const href = a.getAttribute("href");
+        if (!href) continue;
+        // Skip anchor-only links (in-page references)
+        if (href.startsWith("#")) continue;
+
+        const absUrl = toAbsoluteUrl(href);
+        // Use getClientRects for inline links that may span multiple lines
+        const rects = a.getClientRects();
+        for (const rect of rects) {
+            const x = PDF_MARGIN_MM + (rect.left - articleRect.left) * scaleX;
+            const y = PDF_MARGIN_MM + (rect.top - articleRect.top) * scaleY;
+            const w = rect.width * scaleX;
+            const h = rect.height * scaleY;
+            if (w > 0 && h > 0) {
+                pdf.link(x, y, w, h, { url: absUrl });
+            }
+        }
+    }
+
+    // Build PDF outline (bookmarks) from heading elements
+    const headings = article.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6");
+    if (headings.length > 0) {
+        // Stack tracks the last outline item at each heading level (1-6)
+        const stack: { level: number; item: ReturnType<typeof pdf.outline.add> }[] = [];
+
+        for (const heading of headings) {
+            const level = parseInt(heading.tagName[1], 10);
+            const title = heading.textContent?.trim();
+            if (!title) continue;
+
+            // Find parent: the most recent item with a smaller level number
+            let parent: ReturnType<typeof pdf.outline.add> | null = null;
+            for (let i = stack.length - 1; i >= 0; i--) {
+                if (stack[i].level < level) {
+                    parent = stack[i].item;
+                    break;
+                }
+            }
+
+            const item = pdf.outline.add(parent, title, { pageNumber: 1 });
+            // Remove deeper entries from stack
+            while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+                stack.pop();
+            }
+            stack.push({ level, item });
+        }
+    }
+
     pdf.save(filename);
 }
 
