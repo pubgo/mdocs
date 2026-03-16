@@ -6,6 +6,7 @@ import { WidthToggle } from "./components/WidthToggle";
 import { GroupDropdown } from "./components/GroupDropdown";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { SearchToggle } from "./components/SearchToggle";
+import { GlobalSearchModal } from "./components/GlobalSearchModal";
 import { RestartButton } from "./components/RestartButton";
 import { DropOverlay } from "./components/DropOverlay";
 import { TocPanel } from "./components/TocPanel";
@@ -37,6 +38,7 @@ export function App() {
   const [headings, setHeadings] = useState<TocHeading[]>([]);
   const [contentRevision, setContentRevision] = useState(0);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [viewModes, setViewModes] = useState<Record<string, ViewMode>>(() => {
     try {
       const stored = localStorage.getItem(VIEWMODE_STORAGE_KEY);
@@ -153,7 +155,7 @@ export function App() {
         setGroups(data);
         setStatus(statusData);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Sync URL with active group (and ?file= when a file is selected, e.g. after opening from graph)
@@ -228,6 +230,12 @@ export function App() {
     setSearchQuery((prev) => (prev != null ? null : ""));
   }, []);
 
+  const handleGlobalSearchSelect = useCallback((groupName: string, fileId: string) => {
+    setShowGraph(false);
+    setActiveGroup(groupName);
+    setActiveFileId(fileId);
+  }, []);
+
   const handleGroupChange = (name: string) => {
     setActiveGroup(name);
     setActiveFileId(null);
@@ -298,6 +306,23 @@ export function App() {
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const hasModifier = e.metaKey || e.ctrlKey;
+      const openGlobalSearch = hasModifier && e.shiftKey && key === "f";
+      if (!openGlobalSearch) return;
+      e.preventDefault();
+      setShowGraph(false);
+      setGlobalSearchOpen(true);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full font-sans text-gh-text bg-gh-bg">
       <header className="h-12 shrink-0 flex items-center gap-3 px-4 bg-gh-header-bg text-gh-header-text border-b border-gh-header-border">
@@ -335,9 +360,8 @@ export function App() {
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
-            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
-              showGraph && graphViewMode === "link" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
-            } text-gh-header-text`}
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${showGraph && graphViewMode === "link" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+              } text-gh-header-text`}
             onClick={() => {
               setGraphViewMode("link");
               setShowGraph(true);
@@ -352,9 +376,8 @@ export function App() {
           </button>
           <button
             type="button"
-            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
-              showGraph && graphViewMode === "outline" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
-            } text-gh-header-text`}
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${showGraph && graphViewMode === "outline" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+              } text-gh-header-text`}
             onClick={() => {
               setGraphViewMode("outline");
               setShowGraph(true);
@@ -369,9 +392,8 @@ export function App() {
           </button>
           <button
             type="button"
-            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
-              showGraph && graphViewMode === "gravity" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
-            } text-gh-header-text`}
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${showGraph && graphViewMode === "gravity" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+              } text-gh-header-text`}
             onClick={() => {
               setGraphViewMode("gravity");
               setShowGraph(true);
@@ -386,9 +408,8 @@ export function App() {
           </button>
           <button
             type="button"
-            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${
-              showGraph && graphViewMode === "tree" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
-            } text-gh-header-text`}
+            className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${showGraph && graphViewMode === "tree" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
+              } text-gh-header-text`}
             onClick={() => {
               setGraphViewMode("tree");
               setShowGraph(true);
@@ -461,6 +482,12 @@ export function App() {
           />
         )}
       </div>
+      <GlobalSearchModal
+        isOpen={globalSearchOpen}
+        groups={groups}
+        onClose={() => setGlobalSearchOpen(false)}
+        onSelect={handleGlobalSearchSelect}
+      />
       <RestartButton />
       {isDragging && <DropOverlay />}
     </div>
