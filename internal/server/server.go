@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -118,7 +119,7 @@ type State struct {
 	backupSaveFn func(RestoreData) // backup write callback
 	backupDone   chan struct{}     // closed when backupLoop exits
 
-	useHeadingTitle bool // when true, extract first heading as title
+	useHeadingTitle atomic.Bool // when true, extract first heading as title
 }
 
 const defaultFileChangeDebounce = 200 * time.Millisecond
@@ -154,7 +155,7 @@ func NewState(ctx context.Context) *State {
 // heading as the file title. When enabled, AddFile and AddUploadedFile
 // populate the Title field, and file-change events update it.
 func (s *State) SetUseHeadingTitle(v bool) {
-	s.useHeadingTitle = v
+	s.useHeadingTitle.Store(v)
 }
 
 // ErrBinaryFile is returned when a file is detected as binary.
@@ -211,7 +212,7 @@ func (s *State) AddFile(absPath, groupName string) (*FileEntry, error) {
 
 	// Extract title outside the lock to avoid I/O under mutex.
 	var title string
-	if s.useHeadingTitle {
+	if s.useHeadingTitle.Load() {
 		title = extractTitleFromFile(absPath)
 	}
 
@@ -276,7 +277,7 @@ func (s *State) AddUploadedFile(name, content, groupName string) *FileEntry {
 	}
 
 	var title string
-	if s.useHeadingTitle {
+	if s.useHeadingTitle.Load() {
 		title = extractTitle(content)
 	}
 
@@ -938,7 +939,7 @@ func (s *State) notifyFileChangedByPath(absPath string) {
 	if len(ids) == 0 {
 		return
 	}
-	if s.useHeadingTitle {
+	if s.useHeadingTitle.Load() {
 		if s.UpdateTitleByPath(absPath) {
 			s.sendEvent(sseEvent{Name: eventUpdate, Data: "{}"})
 		}
