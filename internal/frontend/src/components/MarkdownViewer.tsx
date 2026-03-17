@@ -156,6 +156,7 @@ async function renderMermaid(code: string, width?: number): Promise<string> {
 
 export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState("");
+  const [renderStatus, setRenderStatus] = useState<"pending" | "rendered" | "failed">("pending");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -291,13 +292,20 @@ export function MermaidBlock({ code }: { code: string }) {
 
     const doRender = () => {
       const width = resolveRenderWidth();
+      setRenderStatus("pending");
       mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
       renderMermaid(code, width)
         .then((renderedSvg) => {
-          if (!cancelled) setSvg(normalizeMermaidSvg(renderedSvg, fitToWidth));
+          if (!cancelled) {
+            setSvg(normalizeMermaidSvg(renderedSvg, fitToWidth));
+            setRenderStatus("rendered");
+          }
         })
         .catch(() => {
-          if (!cancelled) setSvg("");
+          if (!cancelled) {
+            setSvg("");
+            setRenderStatus("failed");
+          }
         });
     };
 
@@ -340,6 +348,7 @@ export function MermaidBlock({ code }: { code: string }) {
     return (
       <div
         ref={blockRef}
+        data-mermaid-render-status={renderStatus}
         className={`relative group mermaid-block${fitToWidth ? " mermaid-block--fit-width" : ""}`}
       >
         <div
@@ -377,7 +386,7 @@ export function MermaidBlock({ code }: { code: string }) {
     );
   }
   return (
-    <div ref={containerRef} className="relative group">
+    <div ref={containerRef} data-mermaid-render-status={renderStatus} className="relative group">
       <pre>
         <code>{code}</code>
       </pre>
@@ -894,6 +903,7 @@ export function MarkdownViewer({
     <div className="flex items-start gap-2">
       <article
         ref={articleRef}
+        data-file-id={fileId}
         className={`markdown-body min-w-0 flex-1${isWide ? " markdown-body--wide" : ""}`}
       >
         {renderedContent}

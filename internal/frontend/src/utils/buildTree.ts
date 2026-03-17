@@ -148,6 +148,24 @@ export function buildTree(files: FileEntry[]): TreeNode {
   return root;
 }
 
+/** Flattens a tree into file entries using the same visual order as TreeView. */
+export function flattenTreeFiles(node: TreeNode): FileEntry[] {
+  const result: FileEntry[] = [];
+
+  const walk = (current: TreeNode) => {
+    if (current.file != null) {
+      result.push(current.file);
+      return;
+    }
+    for (const child of current.children) {
+      walk(child);
+    }
+  };
+
+  walk(node);
+  return result;
+}
+
 function findCommonPrefix(segmentsList: string[][]): string[] {
   if (segmentsList.length === 0) return [];
   const first = segmentsList[0];

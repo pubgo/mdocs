@@ -19,7 +19,8 @@ import { useScrollRestoration, SCROLL_SESSION_KEY } from "./hooks/useScrollResto
 import type { Group, Status } from "./hooks/useApi";
 import { fetchGroups, fetchStatus, removeFile, removePattern, reorderFiles } from "./hooks/useApi";
 import { allFileIds, parseGroupFromPath, parseFileIdFromSearch, groupToPath, buildFileUrl } from "./utils/groups";
-import { getAllFileIdsUnder, type TreeNode } from "./utils/buildTree";
+import { buildTree, flattenTreeFiles, getAllFileIdsUnder, type TreeNode } from "./utils/buildTree";
+import { captureArticleForMergedPdf, exportMergedPdfFromSnapshots } from "./utils/pdfExport";
 import { OutlineGraphView } from "./components/OutlineGraphView";
 import { OutlineGravityView } from "./components/OutlineGravityView";
 import { OutlineTreeView } from "./components/OutlineTreeView";
@@ -57,6 +58,7 @@ export function App() {
   });
   const [showGraph, setShowGraph] = useState(false);
   const [graphViewMode, setGraphViewMode] = useState<"link" | "outline" | "gravity" | "tree">("link");
+  const [isExportingAllPdf, setIsExportingAllPdf] = useState(false);
   const [status, setStatus] = useState<Status | null>(null);
   const knownFileIds = useRef<Set<string>>(new Set());
   const [initialFileId, setInitialFileId] = useState<string | null>(() => {
@@ -183,6 +185,11 @@ export function App() {
     [groups, activeGroup, activeFileId],
   );
 
+  const activeGroupFiles = useMemo(
+    () => groups.find((g) => g.name === activeGroup)?.files ?? [],
+    [groups, activeGroup],
+  );
+
   useEffect(() => {
     document.title = activeFileName || "mo";
   }, [activeFileName]);
@@ -205,6 +212,20 @@ export function App() {
   const { isDragging } = useFileDrop(activeGroup);
 
   const currentViewMode: ViewMode = viewModes[activeGroup] ?? "flat";
+
+  const exportFiles = useMemo(() => {
+    const baseFiles = currentViewMode === "tree"
+      ? flattenTreeFiles(buildTree(activeGroupFiles))
+      : activeGroupFiles;
+
+    const readmeFiles = baseFiles.filter((file) => /^readme\.(md|mdx)$/i.test(file.name));
+    if (readmeFiles.length === 0) {
+      return baseFiles;
+    }
+
+    const readmeIds = new Set(readmeFiles.map((file) => file.id));
+    return [...readmeFiles, ...baseFiles.filter((file) => !readmeIds.has(file.id))];
+  }, [activeGroupFiles, currentViewMode]);
 
   useEffect(() => {
     localStorage.setItem(VIEWMODE_STORAGE_KEY, JSON.stringify(viewModes));
@@ -306,6 +327,62 @@ export function App() {
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  const waitForRenderedArticle = useCallback((targetFileId: string): Promise<HTMLElement> => {
+    return new Promise((resolve, reject) => {
+      const timeoutMs = 10000;
+      const startedAt = Date.now();
+
+      const check = () => {
+        const article = [...document.querySelectorAll<HTMLElement>("article.markdown-body")].find(
+          (el) => el.dataset.fileId === targetFileId,
+        );
+        if (article) {
+          resolve(article);
+          return;
+        }
+
+        if (Date.now() - startedAt > timeoutMs) {
+          reject(new Error("Timed out waiting for markdown render"));
+          return;
+        }
+
+        requestAnimationFrame(check);
+      };
+
+      check();
+    });
+  }, []);
+
+  const handleExportAllPdfs = useCallback(async () => {
+    if (isExportingAllPdf || exportFiles.length === 0) return;
+
+    const shouldContinue = window.confirm(
+      `将按当前顺序把 ${exportFiles.length} 篇文档合并导出为一个 PDF，是否继续？`,
+    );
+    if (!shouldContinue) return;
+
+    const originalActiveFileId = activeFileId;
+    setIsExportingAllPdf(true);
+    setShowGraph(false);
+
+    try {
+      const snapshots = [];
+      for (const file of exportFiles) {
+        setActiveFileId(file.id);
+        const article = await waitForRenderedArticle(file.id);
+        const snapshot = await captureArticleForMergedPdf(article, file.name);
+        snapshots.push(snapshot);
+      }
+      const mergedFileName = `${activeGroup}-merged.pdf`;
+      await exportMergedPdfFromSnapshots(snapshots, mergedFileName);
+    } catch {
+      alert("合并导出失败，请重试。");
+    } finally {
+      setActiveFileId(originalActiveFileId);
+      setIsExportingAllPdf(false);
+    }
+  }, [activeFileId, exportFiles, isExportingAllPdf, waitForRenderedArticle, activeGroup]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
@@ -358,6 +435,21 @@ export function App() {
         <ViewModeToggle viewMode={currentViewMode} onToggle={handleViewModeToggle} />
         <SearchToggle isOpen={searchQuery != null} onToggle={handleSearchToggle} />
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            className="flex items-center justify-center gap-1 rounded-md px-2 py-1.5 cursor-pointer transition-colors duration-150 border bg-transparent border-gh-border hover:bg-gh-bg-hover text-gh-header-text disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => void handleExportAllPdfs()}
+            aria-label="Export all PDFs"
+            title={isExportingAllPdf ? "正在合并导出 PDF..." : "合并导出当前分组为单个 PDF"}
+            disabled={isExportingAllPdf || exportFiles.length === 0}
+          >
+            <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h9a2.25 2.25 0 0 1 2.25 2.25v9A2.25 2.25 0 0 1 17.25 20.25h-9A2.25 2.25 0 0 1 6 18V9a2.25 2.25 0 0 1 2.25-2.25Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 15.75H4.875A2.625 2.625 0 0 1 2.25 13.125v-8.25A2.625 2.625 0 0 1 4.875 2.25h8.25A2.625 2.625 0 0 1 15.75 4.875V6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 11.25h4.5m-4.5 3h3" />
+            </svg>
+            <span className="text-sm leading-none whitespace-nowrap">合并 PDF</span>
+          </button>
           <button
             type="button"
             className={`flex items-center justify-center rounded-md p-1.5 cursor-pointer transition-colors duration-150 border ${showGraph && graphViewMode === "link" ? "bg-gh-bg-hover border-gh-border" : "bg-transparent border-gh-border hover:bg-gh-bg-hover"
