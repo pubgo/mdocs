@@ -95,6 +95,12 @@ interface MermaidLayout {
   constrainHeight: boolean;
 }
 
+function getInlineMermaidMaxHeightPx(): number {
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 1080;
+  const cap = Math.round(viewportHeight * 0.78);
+  return Math.min(960, Math.max(320, cap));
+}
+
 function parseSvgDimensionValue(value: string | null): number | null {
   if (!value) return null;
   const parsed = parseFloat(value);
@@ -134,6 +140,7 @@ function resolveMermaidLayout(
   complexity: number,
   isFullscreen: boolean,
   dimensions: MermaidDimensions | null,
+  renderWidth: number,
 ): MermaidLayout {
   if (isFullscreen) {
     return { fitToWidth: true, preserveScale: false, constrainHeight: false };
@@ -148,23 +155,18 @@ function resolveMermaidLayout(
   const ratio = dimensions.width / dimensions.height;
   const isWide = ratio >= MERMAID_WIDE_RATIO_THRESHOLD;
   const isTall = dimensions.height / dimensions.width >= MERMAID_TALL_RATIO_THRESHOLD;
+  const isNarrowComparedToContainer = dimensions.width < renderWidth * 0.92;
 
-  if (isWide) {
-    return { fitToWidth: true, preserveScale: false, constrainHeight: true };
-  }
+  const fitToWidth = defaultFit || isWide || isTall || isNarrowComparedToContainer;
 
-  if (isTall) {
-    return { fitToWidth: false, preserveScale: false, constrainHeight: true };
-  }
-
-  return { fitToWidth: defaultFit, preserveScale: false, constrainHeight: true };
+  return { fitToWidth, preserveScale: false, constrainHeight: true };
 }
 
 function cleanupMermaidErrors() {
   document.querySelectorAll("[id^='dmermaid-']").forEach((el) => el.remove());
 }
 
-function normalizeMermaidSvg(svg: string, layout: MermaidLayout): string {
+function normalizeMermaidSvg(svg: string, layout: MermaidLayout, renderWidthPx: number): string {
   try {
     const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
     const svgEl = doc.documentElement;
@@ -203,14 +205,35 @@ function normalizeMermaidSvg(svg: string, layout: MermaidLayout): string {
     }
 
     const prevStyle = svgEl.getAttribute("style") || "";
-    const normalizedStyle = layout.fitToWidth
+    let normalizedStyle = layout.fitToWidth
       ? "width:100%;height:auto;max-width:100%;"
       : layout.preserveScale
         ? "height:auto;max-width:none;"
         : "height:auto;max-width:100%;";
 
     svgEl.setAttribute("preserveAspectRatio", "xMinYMin meet");
-    if (layout.fitToWidth) {
+    if (layout.constrainHeight && intrinsicWidth && intrinsicHeight) {
+      const maxWidthPx = Math.max(280, Math.round(renderWidthPx));
+      const maxHeightPx = getInlineMermaidMaxHeightPx();
+
+      const scaleToWidth = maxWidthPx / intrinsicWidth;
+      const scaleToHeight = maxHeightPx / intrinsicHeight;
+
+      let scale = layout.fitToWidth
+        ? Math.min(scaleToWidth, scaleToHeight)
+        : Math.min(1, scaleToWidth, scaleToHeight);
+
+      if (!Number.isFinite(scale) || scale <= 0) {
+        scale = 1;
+      }
+
+      const targetWidth = Math.max(1, Math.round(intrinsicWidth * scale));
+      const targetHeight = Math.max(1, Math.round(intrinsicHeight * scale));
+
+      svgEl.setAttribute("width", String(targetWidth));
+      svgEl.setAttribute("height", String(targetHeight));
+      normalizedStyle = `width:${targetWidth}px;height:${targetHeight}px;max-width:100%;`;
+    } else if (layout.fitToWidth) {
       svgEl.setAttribute("width", "100%");
       svgEl.removeAttribute("height");
     } else if (layout.preserveScale) {
@@ -404,11 +427,11 @@ export function MermaidBlock({ code }: { code: string }) {
       try {
         let renderedSvg = await renderMermaid(code, width);
         let dimensions = parseMermaidSvgDimensions(renderedSvg);
-        let nextLayout = resolveMermaidLayout(mermaidComplexity, isFullscreen, dimensions);
+        let nextLayout = resolveMermaidLayout(mermaidComplexity, isFullscreen, dimensions, width);
 
         if (!cancelled) {
           setLayout(nextLayout);
-          setSvg(normalizeMermaidSvg(renderedSvg, nextLayout));
+          setSvg(normalizeMermaidSvg(renderedSvg, nextLayout, width));
           setRenderStatus("rendered");
         }
       } catch {

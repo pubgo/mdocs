@@ -89,7 +89,7 @@ describe("MermaidBlock", () => {
     expect(block?.className).toContain("mermaid-block--constrain-height");
   });
 
-  it("keeps small diagram svg near natural width and constrained by max-width", async () => {
+  it("fits small diagram svg to container width while respecting max height", async () => {
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: '<svg width="240" height="200"><g><text>diagram</text></g></svg>',
       bindFunctions: undefined,
@@ -101,7 +101,11 @@ describe("MermaidBlock", () => {
     await waitFor(() => {
       const svg = container.querySelector("svg");
       expect(svg).toBeTruthy();
-      expect(svg?.getAttribute("width")).toBe("240");
+      const width = parseFloat(svg?.getAttribute("width") || "0");
+      const height = parseFloat(svg?.getAttribute("height") || "0");
+      expect(width).toBeGreaterThan(240);
+      expect(height).toBeGreaterThan(0);
+      expect(height).toBeLessThanOrEqual(960);
       expect(svg?.getAttribute("viewBox")).toBe("0 0 240 200");
       expect(svg?.getAttribute("preserveAspectRatio")).toBe("xMinYMin meet");
       expect(svg?.getAttribute("style") || "").toContain("max-width:100%");
@@ -319,7 +323,8 @@ describe("MermaidBlock", () => {
       expect(style).toContain("max-width: 100%");
 
       const svg = canvas.querySelector("svg");
-      expect(svg?.getAttribute("width")).toBe("100%");
+      const width = parseFloat(svg?.getAttribute("width") || "0");
+      expect(width).toBeGreaterThan(500);
       expect(svg?.getAttribute("style") || "").toContain("max-width:100%");
     });
   });
@@ -339,8 +344,13 @@ describe("MermaidBlock", () => {
 
       const canvas = screen.getByTestId("mermaid-pan-canvas");
       const style = canvas.getAttribute("style") || "";
-      expect(style).toContain("width: auto");
+      expect(style).toContain("width: 100%");
       expect(style).toContain("max-width: 100%");
+
+      const svg = canvas.querySelector("svg");
+      const height = parseFloat(svg?.getAttribute("height") || "0");
+      expect(height).toBeGreaterThan(0);
+      expect(height).toBeLessThanOrEqual(960);
     });
   });
 
@@ -356,9 +366,47 @@ describe("MermaidBlock", () => {
     await waitFor(() => {
       const canvas = screen.getByTestId("mermaid-pan-canvas");
       const svg = canvas.querySelector("svg");
-      expect(svg?.getAttribute("width")).toBe("100%");
-      expect(svg?.getAttribute("height")).toBeNull();
+      const width = parseFloat(svg?.getAttribute("width") || "0");
+      const height = parseFloat(svg?.getAttribute("height") || "0");
+      expect(width).toBeGreaterThan(500);
+      expect(height).toBeGreaterThan(0);
+      expect(height).toBeLessThanOrEqual(960);
       expect(svg?.getAttribute("style") || "").toContain("max-width:100%");
+    });
+  });
+
+  it("scales extremely large LR-like svg within width and viewport-safe height", async () => {
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: '<svg width="6200" height="2400" viewBox="0 0 6200 2400">diagram</svg>',
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    render(
+      <MermaidBlock
+        code={[
+          "graph LR",
+          "A --> B --> C --> D --> E --> F --> G --> H --> I --> J",
+          "A --> K --> L --> M --> N --> O --> P --> Q --> R --> S",
+        ].join("\n")}
+      />,
+    );
+
+    await waitFor(() => {
+      const canvas = screen.getByTestId("mermaid-pan-canvas");
+      const svg = canvas.querySelector("svg");
+
+      const width = parseFloat(svg?.getAttribute("width") || "0");
+      const height = parseFloat(svg?.getAttribute("height") || "0");
+      const style = svg?.getAttribute("style") || "";
+
+      expect(width).toBeGreaterThan(700);
+      expect(width).toBeLessThanOrEqual(820);
+      expect(height).toBeGreaterThan(250);
+      expect(height).toBeLessThanOrEqual(960);
+      expect(style).toContain("max-width:100%");
+      expect(style).toContain("width:");
+      expect(style).toContain("height:");
     });
   });
 
