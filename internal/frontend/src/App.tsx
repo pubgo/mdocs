@@ -6,6 +6,7 @@ import { WidthToggle } from "./components/WidthToggle";
 import { GroupDropdown } from "./components/GroupDropdown";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { SearchToggle } from "./components/SearchToggle";
+import { TitleToggle } from "./components/TitleToggle";
 import { RestartButton } from "./components/RestartButton";
 import { DropOverlay } from "./components/DropOverlay";
 import { TocPanel } from "./components/TocPanel";
@@ -21,6 +22,7 @@ import { isMarkdownFile } from "./utils/filetype";
 
 const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
 const WIDTH_STORAGE_KEY = "mo-layout-width";
+const SHOW_TITLE_STORAGE_KEY = "mo-sidebar-show-title";
 
 export function App() {
   const [groups, setGroups] = useState<Group[]>([]);
@@ -36,6 +38,15 @@ export function App() {
   const [viewModes, setViewModes] = useState<Record<string, ViewMode>>(() => {
     try {
       const stored = localStorage.getItem(VIEWMODE_STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      /* ignore */
+    }
+    return {};
+  });
+  const [showTitles, setShowTitles] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem(SHOW_TITLE_STORAGE_KEY);
       if (stored) return JSON.parse(stored);
     } catch {
       /* ignore */
@@ -168,10 +179,11 @@ export function App() {
     [groups, activeGroup, activeFileId],
   );
   const activeFileName = activeFile?.name ?? "";
+  const currentShowTitle: boolean = showTitles[activeGroup] ?? false;
 
   useEffect(() => {
-    document.title = activeFile?.title || activeFileName || "mo";
-  }, [activeFile?.title, activeFileName]);
+    document.title = (currentShowTitle && activeFile?.title) || activeFileName || "mo";
+  }, [currentShowTitle, activeFile?.title, activeFileName]);
 
   // Auto-close ToC panel when switching to a non-markdown file
   useEffect(() => {
@@ -204,6 +216,10 @@ export function App() {
   }, [viewModes]);
 
   useEffect(() => {
+    localStorage.setItem(SHOW_TITLE_STORAGE_KEY, JSON.stringify(showTitles));
+  }, [showTitles]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(WIDTH_STORAGE_KEY, isWide ? "wide" : "narrow");
     } catch {
@@ -217,6 +233,10 @@ export function App() {
       const nextMode: ViewMode = current === "flat" ? "tree" : "flat";
       return { ...prev, [activeGroup]: nextMode };
     });
+  }, [activeGroup]);
+
+  const handleTitleToggle = useCallback(() => {
+    setShowTitles((prev) => ({ ...prev, [activeGroup]: !prev[activeGroup] }));
   }, [activeGroup]);
 
   const handleSearchToggle = useCallback(() => {
@@ -302,6 +322,7 @@ export function App() {
           onGroupChange={handleGroupChange}
         />
         <ViewModeToggle viewMode={currentViewMode} onToggle={handleViewModeToggle} />
+        <TitleToggle showTitle={currentShowTitle} onToggle={handleTitleToggle} />
         <SearchToggle isOpen={searchQuery != null} onToggle={handleSearchToggle} />
         <div className="ml-auto flex items-center gap-2">
           <WidthToggle isWide={isWide} onToggle={() => setIsWide((v) => !v)} />
@@ -317,6 +338,7 @@ export function App() {
             onFileSelect={setActiveFileId}
             onFilesReorder={handleFilesReorder}
             viewMode={currentViewMode}
+            showTitle={currentShowTitle}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
           />

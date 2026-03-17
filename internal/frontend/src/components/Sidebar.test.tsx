@@ -32,6 +32,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -50,6 +51,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -67,6 +69,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -89,6 +92,7 @@ describe("Sidebar", () => {
         onFileSelect={onFileSelect}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -107,6 +111,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -125,6 +130,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -141,6 +147,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery=""
         onSearchQueryChange={() => {}}
       />,
@@ -157,6 +164,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery={null}
         onSearchQueryChange={() => {}}
       />,
@@ -173,6 +181,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery="read"
         onSearchQueryChange={() => {}}
       />,
@@ -192,6 +201,7 @@ describe("Sidebar", () => {
         onFileSelect={() => {}}
         onFilesReorder={() => {}}
         viewMode="flat"
+        showTitle={false}
         searchQuery=""
         onSearchQueryChange={onSearchQueryChange}
       />,

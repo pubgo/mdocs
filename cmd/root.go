@@ -54,7 +54,6 @@ var (
 	clearBackup      bool
 	jsonOutput       bool
 	dangerouslyAllowRemoteAccess bool
-	useHeadingTitle  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -173,7 +172,6 @@ func init() {
 	rootCmd.Flags().BoolVar(&clearBackup, "clear", false, "Clear saved session for the specified port")
 	rootCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output structured data as JSON to stdout")
 	rootCmd.Flags().BoolVar(&dangerouslyAllowRemoteAccess, "dangerously-allow-remote-access", false, "Allow remote access without authentication. Recommended only for trusted networks.")
-	rootCmd.Flags().BoolVar(&useHeadingTitle, "use-heading-title", false, "Use the first Markdown heading as the file title in the sidebar")
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -970,7 +968,6 @@ func startServer(ctx context.Context, addr string, filesByGroup map[string][]str
 	defer cleanup()
 
 	state := server.NewState(ctx)
-	state.SetUseHeadingTitle(useHeadingTitle)
 
 	state.EnableBackup(ctx, func(data server.RestoreData) {
 		if err := backup.Save(port, data); err != nil {
@@ -1082,11 +1079,7 @@ func spawnNewProcess(addr string, restoreFile string) (*os.Process, error) {
 		return nil, fmt.Errorf("cannot parse addr: %w", err)
 	}
 
-	args := []string{"--port", p, "--bind", h, "--no-open", "--foreground", "--restore", restoreFile}
-	if useHeadingTitle {
-		args = append(args, "--use-heading-title")
-	}
-	cmd := exec.Command(binPath, args...) //nolint:gosec
+	cmd := exec.Command(binPath, "--port", p, "--bind", h, "--no-open", "--foreground", "--restore", restoreFile) //nolint:gosec
 	setSysProcAttr(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start new process: %w", err)

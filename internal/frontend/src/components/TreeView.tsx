@@ -23,6 +23,7 @@ interface TreeViewProps {
   files: FileEntry[];
   activeGroup: string;
   activeFileId: string | null;
+  showTitle: boolean;
   menuOpenId: string | null;
   otherGroups: Group[];
   onFileSelect: (id: string) => void;
@@ -37,6 +38,7 @@ export function TreeView({
   files,
   activeGroup,
   activeFileId,
+  showTitle,
   menuOpenId,
   otherGroups,
   onFileSelect,
@@ -88,6 +90,7 @@ export function TreeView({
           node={node}
           depth={0}
           activeFileId={activeFileId}
+          showTitle={showTitle}
           menuOpenId={menuOpenId}
           otherGroups={otherGroups}
           onFileSelect={onFileSelect}
@@ -108,6 +111,7 @@ interface TreeNodeItemProps {
   node: TreeNode;
   depth: number;
   activeFileId: string | null;
+  showTitle: boolean;
   menuOpenId: string | null;
   otherGroups: Group[];
   onFileSelect: (id: string) => void;
@@ -124,6 +128,7 @@ function TreeNodeItem({
   node,
   depth,
   activeFileId,
+  showTitle,
   menuOpenId,
   otherGroups,
   onFileSelect,
@@ -142,6 +147,7 @@ function TreeNodeItem({
         name={node.name}
         depth={depth}
         activeFileId={activeFileId}
+        showTitle={showTitle}
         menuOpenId={menuOpenId}
         otherGroups={otherGroups}
         onFileSelect={onFileSelect}
@@ -188,6 +194,7 @@ function TreeNodeItem({
             node={child}
             depth={depth + 1}
             activeFileId={activeFileId}
+            showTitle={showTitle}
             menuOpenId={menuOpenId}
             otherGroups={otherGroups}
             onFileSelect={onFileSelect}
@@ -209,6 +216,7 @@ interface FileNodeItemProps {
   name: string;
   depth: number;
   activeFileId: string | null;
+  showTitle: boolean;
   menuOpenId: string | null;
   otherGroups: Group[];
   onFileSelect: (id: string) => void;
@@ -224,6 +232,7 @@ function FileNodeItem({
   name,
   depth,
   activeFileId,
+  showTitle,
   menuOpenId,
   otherGroups,
   onFileSelect,
@@ -248,7 +257,7 @@ function FileNodeItem({
         title={file.uploaded ? file.name : file.path}
       >
         <FileIcon uploaded={file.uploaded} />
-        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{file.title || name}</span>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{(showTitle && file.title) || name}</span>
       </button>
       <FileContextMenu
         file={file}

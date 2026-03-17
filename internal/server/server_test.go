@@ -1595,9 +1595,8 @@ func TestExtractTitleFromFile(t *testing.T) {
 	})
 }
 
-func TestAddFile_WithUseHeadingTitle(t *testing.T) {
+func TestAddFile_ExtractsTitle(t *testing.T) {
 	s := newTestState(t)
-	s.SetUseHeadingTitle(true)
 
 	dir := t.TempDir()
 	f := filepath.Join(dir, "doc.md")
@@ -1612,26 +1611,24 @@ func TestAddFile_WithUseHeadingTitle(t *testing.T) {
 	}
 }
 
-func TestAddFile_WithoutUseHeadingTitle(t *testing.T) {
+func TestAddFile_NoHeading(t *testing.T) {
 	s := newTestState(t)
-	// useHeadingTitle is false by default
 
 	dir := t.TempDir()
 	f := filepath.Join(dir, "doc.md")
-	os.WriteFile(f, []byte("# My Document\nContent here"), 0o600) //nolint:errcheck
+	os.WriteFile(f, []byte("No heading here"), 0o600) //nolint:errcheck
 
 	entry, err := s.AddFile(f, DefaultGroup)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if entry.Title != "" {
-		t.Errorf("Title = %q, want empty (feature disabled)", entry.Title)
+		t.Errorf("Title = %q, want empty", entry.Title)
 	}
 }
 
-func TestAddUploadedFile_WithUseHeadingTitle(t *testing.T) {
+func TestAddUploadedFile_ExtractsTitle(t *testing.T) {
 	s := newTestState(t)
-	s.SetUseHeadingTitle(true)
 
 	entry := s.AddUploadedFile("note.md", "## Uploaded Note\nBody", DefaultGroup)
 	if entry.Title != "Uploaded Note" {
@@ -1639,18 +1636,8 @@ func TestAddUploadedFile_WithUseHeadingTitle(t *testing.T) {
 	}
 }
 
-func TestAddUploadedFile_WithoutUseHeadingTitle(t *testing.T) {
-	s := newTestState(t)
-
-	entry := s.AddUploadedFile("note.md", "## Uploaded Note\nBody", DefaultGroup)
-	if entry.Title != "" {
-		t.Errorf("Title = %q, want empty (feature disabled)", entry.Title)
-	}
-}
-
 func TestUpdateTitleByPath(t *testing.T) {
 	s := newTestState(t)
-	s.SetUseHeadingTitle(true)
 
 	dir := t.TempDir()
 	f := filepath.Join(dir, "evolving.md")
@@ -1684,7 +1671,6 @@ func TestUpdateTitleByPath(t *testing.T) {
 
 func TestHandleGroups_IncludesTitle(t *testing.T) {
 	s := newTestState(t)
-	s.SetUseHeadingTitle(true)
 
 	dir := t.TempDir()
 	f := filepath.Join(dir, "titled.md")
