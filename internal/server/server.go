@@ -179,19 +179,6 @@ func readFileHead(path string) ([]byte, error) {
 	return buf[:n], nil
 }
 
-// isBinaryFile checks whether the file at the given path is binary
-// by reading the first 8KB and looking for NUL bytes (same heuristic as Git).
-func isBinaryFile(path string) (bool, error) {
-	head, err := readFileHead(path)
-	if err != nil {
-		return false, err
-	}
-	if len(head) == 0 {
-		return false, nil
-	}
-	return bytes.IndexByte(head, 0) >= 0, nil
-}
-
 func (s *State) AddFile(absPath, groupName string) (*FileEntry, error) {
 	// Check for duplicates before doing any I/O.
 	s.mu.RLock()
