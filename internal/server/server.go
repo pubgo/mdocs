@@ -37,8 +37,16 @@ type FileEntry struct {
 // extractTitle returns the text of the first Markdown heading (ATX-style)
 // found in content, or "" if none is found.
 func extractTitle(content string) string {
+	inFence := false
 	for line := range strings.SplitSeq(content, "\n") {
 		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if strings.HasPrefix(trimmed, "#") {
 			after := strings.TrimLeft(trimmed, "#")
 			// ATX headings require a space after the # sequence (CommonMark spec).

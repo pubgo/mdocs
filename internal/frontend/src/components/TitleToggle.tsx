@@ -12,6 +12,7 @@ export function TitleToggle({ showTitle, onToggle }: TitleToggleProps) {
       }`}
       onClick={onToggle}
       aria-pressed={showTitle}
+      aria-label="Title display"
       title={showTitle ? "Show file names" : "Show heading titles"}
     >
       <svg

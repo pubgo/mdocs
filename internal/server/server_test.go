@@ -1558,6 +1558,9 @@ func TestExtractTitle(t *testing.T) {
 		{"bare hash", "#", ""},
 		{"bare hashes", "###", ""},
 		{"no space after hash", "#not-a-heading\n# Real Title", "Real Title"},
+		{"heading inside fenced code block", "```\n# Not A Title\n```\n# Real Title", "Real Title"},
+		{"heading inside tilde fence", "~~~\n# Not A Title\n~~~\n# Real Title", "Real Title"},
+		{"only heading inside fence", "```\n# Only In Fence\n```", ""},
 		{"only first heading", "# First\n# Second", "First"},
 	}
 	for _, tt := range tests {
