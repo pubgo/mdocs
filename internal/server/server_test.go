@@ -1715,3 +1715,39 @@ func TestHandleGroups_IncludesTitle(t *testing.T) {
 		t.Errorf("Title in API response = %q, want %q", groups[0].Files[0].Title, "API Reference")
 	}
 }
+
+func TestCSPHeader(t *testing.T) {
+	s := newTestState(t)
+	handler := NewHandler(s)
+
+	routes := []struct {
+		method string
+		path   string
+	}{
+		{"GET", "/"},
+		{"GET", "/_/api/status"},
+	}
+
+	for _, rt := range routes {
+		req := httptest.NewRequest(rt.method, rt.path, nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		csp := rec.Header().Get("Content-Security-Policy")
+		if csp == "" {
+			t.Errorf("%s %s: Content-Security-Policy header not set", rt.method, rt.path)
+			continue
+		}
+		for _, directive := range []string{
+			"default-src 'self'",
+			"script-src 'self' 'unsafe-eval'",
+			"style-src 'self' 'unsafe-inline'",
+			"object-src 'none'",
+			"frame-ancestors 'none'",
+		} {
+			if !strings.Contains(csp, directive) {
+				t.Errorf("%s %s: CSP missing directive %q\ngot: %s", rt.method, rt.path, directive, csp)
+			}
+		}
+	}
+}
