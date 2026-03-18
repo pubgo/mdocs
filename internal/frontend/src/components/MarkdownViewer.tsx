@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeKatex from "rehype-katex";
 import { rehypeGithubAlerts } from "rehype-github-alerts";
@@ -21,6 +22,16 @@ import { isMarkdownFile, detectLanguage } from "../utils/filetype";
 import type { TocHeading } from "./TocPanel";
 import type { Components } from "react-markdown";
 import "github-markdown-css/github-markdown.css";
+
+// Extend default GitHub-compatible schema to allow style/align attributes used in raw HTML
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [...(defaultSchema.attributes?.["span"] || []), "style"],
+    div: [...(defaultSchema.attributes?.["div"] || []), "style", "align"],
+  },
+};
 
 interface MarkdownViewerProps {
   fileId: string;
@@ -518,7 +529,7 @@ export function MarkdownViewer({
         {parsed && <FrontmatterBlock yaml={parsed.yaml} />}
         <Markdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeGithubAlerts, rehypeSlug, rehypeKatex]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeGithubAlerts, rehypeSlug, rehypeKatex]}
           components={components}
         >
           {md}
