@@ -344,7 +344,7 @@ export function App() {
           />
         )}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div ref={setScrollContainer} className="flex-1 overflow-y-auto p-8 bg-gh-bg">
+          <div ref={setScrollContainer} className="flex-1 overflow-y-auto overscroll-contain p-8 bg-gh-bg">
             {activeFileId != null ? (
               <MarkdownViewer
                 fileId={activeFileId}
