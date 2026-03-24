@@ -104,10 +104,13 @@ func TestRun_Close(t *testing.T) {
 
 func TestRun_WatchWithArgs(t *testing.T) {
 	t.Run("with glob pattern", func(t *testing.T) {
+		f := filepath.Join(t.TempDir(), "test.md")
+		writeTestFile(t, f, []byte("# Test"))
+
 		watchPatterns = []string{"**/*.md"}
 		defer func() { watchPatterns = nil }()
 
-		err := run(rootCmd, []string{"README.md"})
+		err := run(rootCmd, []string{f})
 		if err == nil {
 			t.Fatal("run should return error when --watch and args are both specified")
 		}
@@ -118,15 +121,33 @@ func TestRun_WatchWithArgs(t *testing.T) {
 	})
 
 	t.Run("without glob chars hints shell expansion", func(t *testing.T) {
-		watchPatterns = []string{"README.md"}
+		f1 := filepath.Join(t.TempDir(), "a.md")
+		writeTestFile(t, f1, []byte("# A"))
+		f2 := filepath.Join(t.TempDir(), "b.md")
+		writeTestFile(t, f2, []byte("# B"))
+
+		watchPatterns = []string{f1}
 		defer func() { watchPatterns = nil }()
 
-		err := run(rootCmd, []string{"CHANGELOG.md"})
+		err := run(rootCmd, []string{f2})
 		if err == nil {
 			t.Fatal("run should return error when --watch and args are both specified")
 		}
 		if !strings.Contains(err.Error(), "shell may have expanded") {
 			t.Fatalf("error should hint shell expansion, got %q", err.Error())
+		}
+	})
+
+	t.Run("non-existent file with watch returns file not found", func(t *testing.T) {
+		watchPatterns = []string{"**/*.md"}
+		defer func() { watchPatterns = nil }()
+
+		err := run(rootCmd, []string{"nonexistent.md"})
+		if err == nil {
+			t.Fatal("run should return error for non-existent file")
+		}
+		if !strings.Contains(err.Error(), "file not found") {
+			t.Fatalf("got error %q, want file not found error", err.Error())
 		}
 	})
 }
@@ -623,5 +644,101 @@ func TestIsLoopbackBind(t *testing.T) {
 				t.Errorf("isLoopbackBind(%q) = %v, want %v", tt.bind, got, tt.want)
 			}
 		})
+	}
+}
+
+func writeTestFile(t *testing.T, path string, content []byte) {
+	t.Helper()
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("failed to write test file %s: %v", path, err)
+	}
+}
+
+func TestResolveArgs_Directory(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "a.md"), []byte("# A"))
+	writeTestFile(t, filepath.Join(dir, "b.md"), []byte("# B"))
+	writeTestFile(t, filepath.Join(dir, "c.txt"), []byte("text"))
+
+	files, dirPatterns, err := resolveArgs([]string{dir}, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dirPatterns) != 0 {
+		t.Fatalf("got %d dirPatterns, want 0", len(dirPatterns))
+	}
+	if len(files) != 2 {
+		t.Fatalf("got %d files, want 2: %v", len(files), files)
+	}
+	for _, f := range files {
+		if !strings.HasSuffix(f, ".md") {
+			t.Errorf("unexpected non-.md file: %s", f)
+		}
+	}
+}
+
+func TestResolveArgs_DirectoryWithWatch(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "a.md"), []byte("# A"))
+
+	files, dirPatterns, err := resolveArgs([]string{dir}, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("got %d files, want 0", len(files))
+	}
+	if len(dirPatterns) != 1 {
+		t.Fatalf("got %d dirPatterns, want 1", len(dirPatterns))
+	}
+	want := filepath.Join(dir, "*.md")
+	if dirPatterns[0] != want {
+		t.Errorf("got pattern %q, want %q", dirPatterns[0], want)
+	}
+}
+
+func TestResolveArgs_EmptyDirectory(t *testing.T) {
+	dir := t.TempDir()
+
+	_, _, err := resolveArgs([]string{dir}, false)
+	if err == nil {
+		t.Fatal("expected error for empty directory")
+	}
+	if !strings.Contains(err.Error(), "no .md files") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestResolveArgs_EmptyDirectoryWithWatch(t *testing.T) {
+	dir := t.TempDir()
+
+	files, dirPatterns, err := resolveArgs([]string{dir}, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("got %d files, want 0", len(files))
+	}
+	if len(dirPatterns) != 1 {
+		t.Fatalf("got %d dirPatterns, want 1", len(dirPatterns))
+	}
+}
+
+func TestResolveArgs_MixedFilesAndDirs(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "a.md"), []byte("# A"))
+
+	singleFile := filepath.Join(t.TempDir(), "standalone.md")
+	writeTestFile(t, singleFile, []byte("# Standalone"))
+
+	files, dirPatterns, err := resolveArgs([]string{dir, singleFile}, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dirPatterns) != 0 {
+		t.Fatalf("got %d dirPatterns, want 0", len(dirPatterns))
+	}
+	if len(files) != 2 {
+		t.Fatalf("got %d files, want 2: %v", len(files), files)
 	}
 }
