@@ -58,14 +58,10 @@ describe("formatTitle", () => {
   });
 
   it("returns `file name` when title is undefined", () => {
-    expect(formatTitle({ name: "file.md", title: undefined })).toBe(
-      "file.md | mo",
-    );
+    expect(formatTitle({ name: "file.md", title: undefined })).toBe("file.md | mo");
   });
 
   it("returns `title - file name` when title is defined", () => {
-    expect(formatTitle({ name: "file.md", title: "File Title" })).toBe(
-      "File Title - file.md | mo",
-    );
+    expect(formatTitle({ name: "file.md", title: "File Title" })).toBe("File Title - file.md | mo");
   });
 });
