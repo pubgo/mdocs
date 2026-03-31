@@ -28,13 +28,13 @@ import "github-markdown-css/github-markdown.css";
 // Strip the `user-content-` prefix that remark-gfm bakes into footnote IDs,
 // so rehype-sanitize can re-add it exactly once (avoiding double-prefixed IDs).
 function rehypeStripClobberPrefix() {
+  const FOOTNOTE_ID_PATTERN = /^user-content-(fn-|fnref-|footnote-label$)/;
   const PREFIX = "user-content-";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function walk(node: any) {
     if (node.properties) {
       const props = node.properties;
-      // Only strip from IDs; rehype-sanitize re-adds the prefix to IDs but not hrefs.
-      if (typeof props.id === "string" && props.id.startsWith(PREFIX)) {
+      if (typeof props.id === "string" && FOOTNOTE_ID_PATTERN.test(props.id)) {
         props.id = props.id.slice(PREFIX.length);
       }
     }
