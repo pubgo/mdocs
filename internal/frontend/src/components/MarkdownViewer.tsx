@@ -613,7 +613,7 @@ export function MarkdownViewer({
                   if (target) {
                     e.preventDefault();
                     target.scrollIntoView({ behavior: "smooth", block: "start" });
-                    history.replaceState(null, "", href);
+                    history.pushState(null, "", href);
                   }
                 }}
                 {...props}
