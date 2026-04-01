@@ -20,6 +20,7 @@ import { RemoveButton } from "./RemoveButton";
 import { resolveLink, resolveImageSrc, extractLanguage } from "../utils/resolve";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { stripMdxSyntax } from "../utils/mdx";
+import { transformMarkdownForMo } from "../utils/markdownEnhance";
 import type { TocHeading } from "./TocPanel";
 import type { Components } from "react-markdown";
 import "github-markdown-css/github-markdown.css";
@@ -997,7 +998,8 @@ export function MarkdownViewer({
       return <RawView content={content} />;
     }
     const base = parsed ? parsed.content : content;
-    const md = fileName.endsWith(".mdx") ? stripMdxSyntax(base) : base;
+    const normalized = fileName.endsWith(".mdx") ? stripMdxSyntax(base) : base;
+    const md = transformMarkdownForMo(normalized);
     return (
       <>
         {parsed && <FrontmatterBlock yaml={parsed.yaml} />}
