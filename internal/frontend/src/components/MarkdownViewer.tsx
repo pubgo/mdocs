@@ -25,6 +25,57 @@ import type { TocHeading } from "./TocPanel";
 import type { Components } from "react-markdown";
 import "github-markdown-css/github-markdown.css";
 
+let svgbobModulePromise: Promise<{ loadWASM: () => Promise<void>; render: (ascii: string) => string }> | null = null;
+
+async function renderSvgBob(ascii: string): Promise<string> {
+  if (!svgbobModulePromise) {
+    svgbobModulePromise = import("bob-wasm").then((module) => module.default);
+  }
+
+  const bob = await svgbobModulePromise;
+  await bob.loadWASM();
+  const { render } = bob;
+  return render(ascii);
+}
+
+function normalizeSvgBobSvg(svg: string, isDark: boolean): string {
+  try {
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const svgEl = doc.documentElement;
+    if (!svgEl || svgEl.tagName.toLowerCase() !== "svg") return svg;
+
+    const strokeColor = isDark ? "#e6edf3" : "#1f2328";
+    const styleEl = svgEl.querySelector("style");
+
+    if (styleEl && styleEl.textContent) {
+      let styleText = styleEl.textContent;
+      styleText = styleText.replace(/stroke:black/g, `stroke:${strokeColor}`);
+      styleText = styleText.replace(/fill:black/g, `fill:${strokeColor}`);
+
+      if (/text\s*\{/.test(styleText)) {
+        styleText = styleText.replace(/text\s*\{([^}]*)\}/, (_m, body) => {
+          const nextBody = /fill\s*:/.test(body) ? body : `${body};fill:${strokeColor}`;
+          return `text{${nextBody}}`;
+        });
+      }
+
+      styleEl.textContent = styleText;
+    }
+
+    if (!svgEl.getAttribute("viewBox")) {
+      const width = parseFloat(svgEl.getAttribute("width") || "0");
+      const height = parseFloat(svgEl.getAttribute("height") || "0");
+      if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+        svgEl.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      }
+    }
+
+    return new XMLSerializer().serializeToString(svgEl);
+  } catch {
+    return svg;
+  }
+}
+
 interface MarkdownViewerProps {
   fileId: string;
   fileName: string;
@@ -561,6 +612,93 @@ export function MermaidBlock({ code }: { code: string }) {
   );
 }
 
+export function SvgBobBlock({ code }: { code: string }) {
+  const [svgUrl, setSvgUrl] = useState<string | null>(null);
+  const [renderStatus, setRenderStatus] = useState<"pending" | "rendered" | "failed">("pending");
+  const [themeVersion, setThemeVersion] = useState(0);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setThemeVersion((v) => v + 1);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const doRender = async () => {
+      setRenderStatus("pending");
+      try {
+        const renderedSvg = await renderSvgBob(code);
+        const normalizedSvg = normalizeSvgBobSvg(renderedSvg, getMermaidTheme() === "dark");
+        const nextUrl = URL.createObjectURL(new Blob([normalizedSvg], { type: "image/svg+xml;charset=utf-8" }));
+
+        if (!cancelled) {
+          if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+          }
+          objectUrlRef.current = nextUrl;
+          setSvgUrl(nextUrl);
+          setRenderStatus("rendered");
+        } else {
+          URL.revokeObjectURL(nextUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+          }
+          setSvgUrl(null);
+          setRenderStatus("failed");
+        }
+      }
+    };
+
+    void doRender();
+    return () => {
+      cancelled = true;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [code, themeVersion]);
+
+  if (svgUrl) {
+    return (
+      <div className="relative group svgbob-block" data-svgbob-render-status={renderStatus}>
+        <div className="svgbob-render" data-testid="svgbob-canvas">
+          <img
+            src={svgUrl}
+            alt="SVG Bob diagram"
+            className="svgbob-image"
+            loading="lazy"
+          />
+        </div>
+        <CodeBlockCopyButton code={code} themed />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative group" data-svgbob-render-status={renderStatus}>
+      <pre>
+        <code>{code}</code>
+      </pre>
+      <CodeBlockCopyButton code={code} />
+    </div>
+  );
+}
+
 function MermaidZoomControls({
   zoom,
   onZoomIn,
@@ -945,6 +1083,9 @@ export function MarkdownViewer({
         if (language) {
           if (language === "mermaid") {
             return <MermaidBlock code={code} />;
+          }
+          if (language === "svgbob" || language === "bob") {
+            return <SvgBobBlock code={code} />;
           }
           return <CodeBlock language={language} code={code} />;
         }

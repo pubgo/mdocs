@@ -23,6 +23,9 @@ importers:
       '@shikijs/rehype':
         specifier: ^4.0.1
         version: 4.0.1
+      bob-wasm:
+        specifier: ^1.0.1
+        version: 1.0.1
       d3:
         specifier: ^7.9.0
         version: 7.9.0
@@ -1428,6 +1431,9 @@ packages:
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
 
+  bob-wasm@1.0.1:
+    resolution: {integrity: sha512-MmuVQCBQJgyRO8qg6Qm+yVq4dv6CtrM3rQNDYPJoco9vTFGDwkQGrmPSACLPRnhCDD3h/ng9ndxfRo4wlXPe0g==}
+
   browserslist@4.28.1:
     resolution: {integrity: sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
@@ -1731,6 +1737,9 @@ packages:
   decimal.js@10.6.0:
     resolution: {integrity: sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg==}
 
+  decode-base64@3.0.2:
+    resolution: {integrity: sha512-hgXhqIon8A1gznsTnvsyHFH+n2Jh20VVHnbiSDCBtpoaeCxpzbFJDtkWFVEaGF179d0y67Akdnxz4ipi/7Dcjg==}
+
   decode-named-character-reference@1.3.0:
     resolution: {integrity: sha512-GtpQYB283KrPp6nRw50q3U9/VfOutZOe103qlN7BPP6Ad27xYnOIWv4lPzo8HCAL+mMZofJ9KEy30fq6MfaK6Q==}
 
@@ -1865,6 +1874,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  function-once@3.0.1:
+    resolution: {integrity: sha512-bE3E8REk4jANDot3l0sLFkXgywBwzFKsmbwdnVHLJUnt/3kV6dNG0oJJqoRBuS1Z9Lr4ZoQgwV0ZNLDgWDbv7Q==}
 
   gemoji@8.1.0:
     resolution: {integrity: sha512-HA4Gx59dw2+tn+UAa7XEV4ufUKI4fH1KgcbenVA9YKSj1QJTT0xh5Mwv5HMFNN3l2OtUe3ZIfuRwSyZS5pLIWw==}
@@ -2393,6 +2405,9 @@ packages:
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
 
+  node-buffer-encoding@1.0.3:
+    resolution: {integrity: sha512-9hJZNChhQoCN1rCFScJiEwtzvWEJw2wSnu2nhDLD/YOYl1Ce8GbtnorsnjwwjpSk4sWE7zSp2etX6j7+bO7fVA==}
+
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
@@ -2792,6 +2807,9 @@ packages:
 
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
+
+  uint8-encoding@2.0.1:
+    resolution: {integrity: sha512-xZAjZ+3OvrDtjFLLgojrLmG6T0YwZEo0OTyqCBxFjlFimIKnLtFqyYk6z/jDOUlJFJE52Srtrv4W4x7t4Cn/dA==}
 
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
@@ -4248,6 +4266,12 @@ snapshots:
 
   big.js@5.2.2: {}
 
+  bob-wasm@1.0.1:
+    dependencies:
+      decode-base64: 3.0.2
+      function-once: 3.0.1
+      uint8-encoding: 2.0.1
+
   browserslist@4.28.1:
     dependencies:
       baseline-browser-mapping: 2.10.0
@@ -4580,6 +4604,10 @@ snapshots:
 
   decimal.js@10.6.0: {}
 
+  decode-base64@3.0.2:
+    dependencies:
+      node-buffer-encoding: 1.0.3
+
   decode-named-character-reference@1.3.0:
     dependencies:
       character-entities: 2.0.2
@@ -4707,6 +4735,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  function-once@3.0.1: {}
 
   gemoji@8.1.0: {}
 
@@ -5542,6 +5572,8 @@ snapshots:
 
   neo-async@2.6.2: {}
 
+  node-buffer-encoding@1.0.3: {}
+
   node-releases@2.0.27: {}
 
   object-assign@4.1.1: {}
@@ -6049,6 +6081,8 @@ snapshots:
   typescript@5.9.3: {}
 
   ufo@1.6.3: {}
+
+  uint8-encoding@2.0.1: {}
 
   undici-types@7.18.2: {}
 

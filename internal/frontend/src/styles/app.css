@@ -117,6 +117,31 @@ body,
   max-height: none;
 }
 
+.markdown-body .svgbob-block .svgbob-render {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--color-gh-border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--color-gh-bg-secondary);
+}
+
+.markdown-body .svgbob-block .svgbob-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+}
+
+[data-theme="light"] .markdown-body .svgbob-block .svgbob-image {
+  filter: contrast(1.03);
+}
+
+[data-theme="dark"] .markdown-body .svgbob-block .svgbob-image {
+  filter: contrast(1.08) brightness(1.05);
+}
+
 /* Undo Tailwind preflight's display:block on img inside markdown
    so that inline badge images render on one line like GitHub */
 .markdown-body img {
@@ -193,11 +218,11 @@ body,
   border-left: 4px solid var(--borderColor-default);
 }
 
-.markdown-body .markdown-alert > :first-child {
+.markdown-body .markdown-alert> :first-child {
   margin-top: 0;
 }
 
-.markdown-body .markdown-alert > :last-child {
+.markdown-body .markdown-alert> :last-child {
   margin-bottom: 0;
 }
 
@@ -209,7 +234,7 @@ body,
   margin-bottom: 4px;
 }
 
-.markdown-body .markdown-alert-title > svg {
+.markdown-body .markdown-alert-title>svg {
   fill: currentColor;
 }
 
