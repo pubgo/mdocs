@@ -10,6 +10,7 @@ export function CloseFileButton({ onClose, uploaded }: CloseFileButtonProps) {
     <button
       className="flex items-center justify-center bg-transparent border border-gh-border rounded-md p-1.5 text-gh-text-secondary cursor-pointer transition-colors duration-150 hover:bg-gh-bg-hover"
       onClick={onClose}
+      aria-label={uploaded ? "Discard" : "Close file"}
       title={uploaded ? "Discard" : "Close file"}
     >
       <RemoveIcon uploaded={uploaded} />
