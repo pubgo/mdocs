@@ -11,6 +11,7 @@ import { rehypeGithubAlerts } from "rehype-github-alerts";
 import "katex/dist/katex.min.css";
 import { codeToHtml } from "shiki";
 import mermaid from "mermaid";
+import { renderMermaidSVG } from "beautiful-mermaid";
 import { fetchFileContent, openRelativeFile } from "../hooks/useApi";
 import { RawToggle } from "./RawToggle";
 import { TocToggle } from "./TocToggle";
@@ -300,6 +301,38 @@ function normalizeMermaidLabelNewlines(code: string): string {
   });
 }
 
+function supportsBeautifulMermaid(code: string): boolean {
+  const lines = code.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("%%")) continue;
+    const normalized = trimmed.toLowerCase();
+    return (
+      normalized.startsWith("graph") ||
+      normalized.startsWith("flowchart") ||
+      normalized.startsWith("statediagram") ||
+      normalized.startsWith("sequencediagram") ||
+      normalized.startsWith("classdiagram") ||
+      normalized.startsWith("erdiagram") ||
+      normalized.startsWith("xychart-beta")
+    );
+  }
+  return false;
+}
+
+function renderBeautifulMermaid(code: string): string {
+  const isDark = getMermaidTheme() === "dark";
+  return renderMermaidSVG(code, {
+    bg: "var(--color-gh-bg)",
+    fg: "var(--color-gh-text)",
+    line: "var(--color-gh-border)",
+    accent: isDark ? "#58a6ff" : "#0969da",
+    border: "var(--color-gh-border)",
+    transparent: true,
+    interactive: true,
+  });
+}
+
 function normalizeMermaidSvg(svg: string, layout: MermaidLayout, renderWidthPx: number): string {
   try {
     const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
@@ -558,19 +591,42 @@ export function MermaidBlock({ code }: { code: string }) {
     const doRender = async () => {
       const width = resolveRenderWidth();
       setRenderStatus("pending");
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: getMermaidTheme(),
-        flowchart: {
-          htmlLabels: true,
-          useMaxWidth: false,
-        },
-        sequence: {
-          useMaxWidth: false,
-        },
-      });
       try {
-        let renderedSvg = await renderMermaid(normalizedCode, width);
+        let renderedSvg = "";
+        const canUseBeautiful = supportsBeautifulMermaid(normalizedCode);
+
+        if (canUseBeautiful) {
+          try {
+            renderedSvg = renderBeautifulMermaid(normalizedCode);
+          } catch {
+            mermaid.initialize({
+              startOnLoad: false,
+              theme: getMermaidTheme(),
+              flowchart: {
+                htmlLabels: true,
+                useMaxWidth: false,
+              },
+              sequence: {
+                useMaxWidth: false,
+              },
+            });
+            renderedSvg = await renderMermaid(normalizedCode, width);
+          }
+        } else {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: getMermaidTheme(),
+            flowchart: {
+              htmlLabels: true,
+              useMaxWidth: false,
+            },
+            sequence: {
+              useMaxWidth: false,
+            },
+          });
+          renderedSvg = await renderMermaid(normalizedCode, width);
+        }
+
         let dimensions = parseMermaidSvgDimensions(renderedSvg);
         let nextLayout = resolveMermaidLayout(mermaidComplexity, isFullscreen, dimensions, width);
 

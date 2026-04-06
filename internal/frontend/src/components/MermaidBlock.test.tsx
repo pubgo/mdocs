@@ -9,13 +9,21 @@ vi.mock("mermaid", () => ({
   },
 }));
 
+vi.mock("beautiful-mermaid", () => ({
+  renderMermaidSVG: vi.fn(),
+}));
+
 import mermaid from "mermaid";
+import { renderMermaidSVG } from "beautiful-mermaid";
 
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 const writeMock = vi.fn().mockResolvedValue(undefined);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(renderMermaidSVG).mockImplementation(() => {
+    throw new Error("beautiful-mermaid disabled in baseline tests");
+  });
   writeTextMock.mockClear();
   writeMock.mockClear();
   Object.defineProperty(navigator, "clipboard", {
@@ -26,6 +34,39 @@ beforeEach(() => {
 });
 
 describe("MermaidBlock", () => {
+  it("uses beautiful-mermaid renderer when available for supported diagrams", async () => {
+    vi.mocked(renderMermaidSVG).mockReturnValue('<svg width="360" height="180">diagram</svg>');
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Copy code")).toBeInTheDocument();
+    });
+
+    expect(renderMermaidSVG).toHaveBeenCalled();
+    expect(vi.mocked(mermaid.render)).not.toHaveBeenCalled();
+  });
+
+  it("falls back to mermaid renderer when beautiful-mermaid fails", async () => {
+    vi.mocked(renderMermaidSVG).mockImplementation(() => {
+      throw new Error("beautiful render failed");
+    });
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>fallback</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Copy code")).toBeInTheDocument();
+    });
+
+    expect(renderMermaidSVG).toHaveBeenCalled();
+    expect(vi.mocked(mermaid.render)).toHaveBeenCalled();
+  });
+
   it("shows copy button when mermaid renders successfully", async () => {
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: "<svg>diagram</svg>",
