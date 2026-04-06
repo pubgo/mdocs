@@ -334,13 +334,29 @@ async function loadBeautifulMermaidRender(): Promise<RenderMermaidSVGFn | null> 
 
 function renderBeautifulMermaid(code: string, renderFn: RenderMermaidSVGFn): string {
   const isDark = getMermaidTheme() === "dark";
+  const palette = isDark
+    ? {
+      bg: "#0b1220",
+      fg: "#f0f6ff",
+      line: "#9fb3d1",
+      accent: "#4ea1ff",
+      muted: "#b5c5dd",
+      surface: "#111a2b",
+      border: "#7f9bc3",
+    }
+    : {
+      bg: "#ffffff",
+      fg: "#111827",
+      line: "#334155",
+      accent: "#0057d8",
+      muted: "#475569",
+      surface: "#eef4ff",
+      border: "#2f4f7f",
+    };
+
   return renderFn(code, {
-    bg: "var(--color-gh-bg)",
-    fg: "var(--color-gh-text)",
-    line: "var(--color-gh-border)",
-    accent: isDark ? "#58a6ff" : "#0969da",
-    border: "var(--color-gh-border)",
-    transparent: true,
+    ...palette,
+    transparent: false,
     interactive: true,
   });
 }
