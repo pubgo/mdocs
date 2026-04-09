@@ -18,6 +18,7 @@ import { TocToggle } from "./TocToggle";
 import { CopyButton } from "./CopyButton";
 import { PdfExportButton } from "./PdfExportButton";
 import { RemoveButton } from "./RemoveButton";
+import { BacklinksPanel } from "./BacklinksPanel";
 import { resolveLink, resolveImageSrc, extractLanguage } from "../utils/resolve";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { stripMdxSyntax } from "../utils/mdx";
@@ -1673,11 +1674,20 @@ export function MarkdownViewer({
   }, [fileId, revision]);
 
   const handleLinkClick = useCallback(
-    async (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    async (e: React.MouseEvent<HTMLAnchorElement>, href: string, anchor: string | null) => {
       e.preventDefault();
       try {
         const entry = await openRelativeFile(fileId, href);
         onFileOpened(entry.id);
+        if (anchor) {
+          // Wait for content to render, then scroll to anchor
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              const el = document.getElementById(anchor);
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }, 300);
+          });
+        }
       } catch {
         // fallback: do nothing
       }
@@ -1733,7 +1743,7 @@ export function MarkdownViewer({
             );
           case "markdown":
             return (
-              <a href={href} onClick={(e) => handleLinkClick(e, resolved.hrefPath)} {...props}>
+              <a href={href} onClick={(e) => handleLinkClick(e, resolved.hrefPath, resolved.anchor)} {...props}>
                 {children}
               </a>
             );
@@ -1830,6 +1840,7 @@ export function MarkdownViewer({
         className={`markdown-body min-w-0 flex-1${isWide ? " markdown-body--wide" : ""}`}
       >
         {renderedContent}
+        <BacklinksPanel fileId={fileId} />
       </article>
       <div className="shrink-0 sticky top-0 self-start flex flex-col gap-2 -mr-4 -mt-4">
         <TocToggle isTocOpen={isTocOpen} onToggle={onTocToggle} />

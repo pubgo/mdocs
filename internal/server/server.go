@@ -970,6 +970,7 @@ func NewHandler(state *State) http.Handler {
 	mux.HandleFunc("GET /_/api/version", handleVersion())
 	mux.HandleFunc("GET /_/api/graph", handleGraph(state))
 	mux.HandleFunc("GET /_/api/outline", handleOutline(state))
+	mux.HandleFunc("GET /_/api/export/static", handleExportStatic(state))
 	mux.HandleFunc("GET /_/events", handleSSE(state))
 	mux.HandleFunc("GET /", handleSPA())
 

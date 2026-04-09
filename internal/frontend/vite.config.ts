@@ -9,7 +9,40 @@ export default defineConfig({
   build: {
     outDir: "../static/dist",
     emptyOutDir: true,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Shiki themes & languages — largest payload, rarely all loaded at once
+          if (id.includes("shiki/") || id.includes("@shikijs/")) {
+            return "shiki";
+          }
+          // Mermaid + beautiful-mermaid
+          if (id.includes("mermaid") && !id.includes("node_modules/d3")) {
+            return "mermaid";
+          }
+          // D3 (used by mermaid and graph views)
+          if (id.includes("node_modules/d3")) {
+            return "d3";
+          }
+          // KaTeX
+          if (id.includes("katex")) {
+            return "katex";
+          }
+          // AntV G6 (graph views)
+          if (id.includes("@antv/")) {
+            return "antv";
+          }
+          // PDF export
+          if (id.includes("jspdf") || id.includes("html-to-image")) {
+            return "pdf";
+          }
+          // React core
+          if (id.includes("node_modules/react-dom") || id.includes("node_modules/react/")) {
+            return "react";
+          }
+        },
+      },
       plugins: [
         license({
           thirdParty: {
