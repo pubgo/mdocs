@@ -12,6 +12,7 @@ import "katex/dist/katex.min.css";
 import { codeToHtml } from "shiki";
 import mermaid from "mermaid";
 import { fetchFileContent, openRelativeFile } from "../hooks/useApi";
+import { getMermaidSettings, type MermaidSettings } from "../hooks/useMermaidSettings";
 import { RawToggle } from "./RawToggle";
 import { TocToggle } from "./TocToggle";
 import { CopyButton } from "./CopyButton";
@@ -332,9 +333,36 @@ async function loadBeautifulMermaidRender(): Promise<RenderMermaidSVGFn | null> 
   return beautifulMermaidRenderPromise;
 }
 
-function renderBeautifulMermaid(code: string, renderFn: RenderMermaidSVGFn): string {
+const GITHUB_THEMES: Record<string, Record<string, string>> = {
+  "github-light": {
+    bg: "#ffffff",
+    fg: "#1f2328",
+    line: "#57606a",
+    accent: "#0969da",
+    muted: "#656d76",
+    surface: "#f6f8fa",
+    border: "#d0d7de",
+  },
+  "github-dark": {
+    bg: "#0d1117",
+    fg: "#e6edf3",
+    line: "#8b949e",
+    accent: "#4493f8",
+    muted: "#8b949e",
+    surface: "#161b22",
+    border: "#30363d",
+  },
+};
+
+function resolveBeautifulMermaidPalette(settings: MermaidSettings): Record<string, string> {
   const isDark = getMermaidTheme() === "dark";
-  const palette = isDark
+
+  if (settings.theme === "github-light") return GITHUB_THEMES["github-light"];
+  if (settings.theme === "github-dark") return GITHUB_THEMES["github-dark"];
+  if (settings.theme === "auto") return isDark ? GITHUB_THEMES["github-dark"] : GITHUB_THEMES["github-light"];
+
+  // "custom" — original hand-tuned palette
+  return isDark
     ? {
       bg: "#0b1220",
       fg: "#f0f6ff",
@@ -353,11 +381,21 @@ function renderBeautifulMermaid(code: string, renderFn: RenderMermaidSVGFn): str
       surface: "#eef4ff",
       border: "#2f4f7f",
     };
+}
+
+function renderBeautifulMermaid(code: string, renderFn: RenderMermaidSVGFn): string {
+  const settings = getMermaidSettings();
+  const palette = resolveBeautifulMermaidPalette(settings);
 
   return renderFn(code, {
     ...palette,
     transparent: false,
     interactive: true,
+    nodeSpacing: settings.nodeSpacing,
+    layerSpacing: settings.layerSpacing,
+    thoroughness: settings.thoroughness,
+    padding: settings.padding,
+    font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
   });
 }
 
