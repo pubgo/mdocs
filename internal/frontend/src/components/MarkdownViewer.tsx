@@ -20,6 +20,7 @@ import { PdfExportButton } from "./PdfExportButton";
 import { RemoveButton } from "./RemoveButton";
 import { BacklinksPanel } from "./BacklinksPanel";
 import { resolveLink, resolveImageSrc, extractLanguage } from "../utils/resolve";
+import { findBestSearchTarget } from "../utils/searchJump";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { stripMdxSyntax } from "../utils/mdx";
 import { transformMarkdownForMo } from "../utils/markdownEnhance";
@@ -159,6 +160,13 @@ interface MarkdownViewerProps {
   onTocToggle: () => void;
   onRemoveFile: () => void;
   isWide: boolean;
+  searchJumpRequest?: {
+    requestId: number;
+    lineNumber: number;
+    lineText: string;
+    query: string;
+  } | null;
+  onSearchJumpHandled?: () => void;
 }
 
 function getMermaidTheme(): "dark" | "default" {
@@ -1641,6 +1649,8 @@ export function MarkdownViewer({
   onTocToggle,
   onRemoveFile,
   isWide,
+  searchJumpRequest,
+  onSearchJumpHandled,
 }: MarkdownViewerProps) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1823,6 +1833,51 @@ export function MarkdownViewer({
       onContentRenderedRef.current?.();
     }
   }, [loading, renderedContent]);
+
+  useEffect(() => {
+    if (!searchJumpRequest) return;
+    setIsRawView(false);
+  }, [searchJumpRequest]);
+
+  useEffect(() => {
+    if (!searchJumpRequest || loading || isRawView) return;
+
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+
+    const jump = () => {
+      if (cancelled) return;
+
+      const article = articleRef.current;
+      if (!article) {
+        onSearchJumpHandled?.();
+        return;
+      }
+
+      const target = findBestSearchTarget(
+        article,
+        searchJumpRequest.lineText,
+        searchJumpRequest.query,
+      );
+
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      onSearchJumpHandled?.();
+    };
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(jump);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isRawView, loading, onSearchJumpHandled, renderedContent, searchJumpRequest]);
 
   if (loading) {
     return (
