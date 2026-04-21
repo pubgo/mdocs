@@ -522,3 +522,13 @@ func TestIsLoopbackBind(t *testing.T) {
 		})
 	}
 }
+
+func TestBindFlagDefault(t *testing.T) {
+	f := rootCmd.Flags().Lookup("bind")
+	if f == nil {
+		t.Fatal("bind flag not found")
+	}
+	if f.DefValue != "0.0.0.0" {
+		t.Errorf("bind flag default = %q, want %q", f.DefValue, "0.0.0.0")
+	}
+}
