@@ -26,6 +26,7 @@ interface TreeViewProps {
   activeFileId: string | null;
   menuOpenId: string | null;
   otherGroups: Group[];
+  readOnly?: boolean;
   onFileSelect: (id: string) => void;
   onMenuToggle: (id: string) => void;
   onOpenInNewTab: (id: string) => void;
@@ -43,6 +44,7 @@ export function TreeView({
   activeFileId,
   menuOpenId,
   otherGroups,
+  readOnly,
   onFileSelect,
   onMenuToggle,
   onOpenInNewTab,
@@ -100,6 +102,7 @@ export function TreeView({
           activeFileId={activeFileId}
           menuOpenId={menuOpenId}
           otherGroups={otherGroups}
+          readOnly={readOnly}
           onFileSelect={onFileSelect}
           onMenuToggle={onMenuToggle}
           onOpenInNewTab={onOpenInNewTab}
@@ -125,6 +128,7 @@ interface TreeNodeItemProps {
   activeFileId: string | null;
   menuOpenId: string | null;
   otherGroups: Group[];
+  readOnly?: boolean;
   onFileSelect: (id: string) => void;
   onMenuToggle: (id: string) => void;
   onOpenInNewTab: (id: string) => void;
@@ -159,6 +163,7 @@ function TreeNodeItem({
   activeFileId,
   menuOpenId,
   otherGroups,
+  readOnly,
   onFileSelect,
   onMenuToggle,
   onOpenInNewTab,
@@ -179,6 +184,7 @@ function TreeNodeItem({
         activeFileId={activeFileId}
         menuOpenId={menuOpenId}
         otherGroups={otherGroups}
+        readOnly={readOnly}
         onFileSelect={onFileSelect}
         onMenuToggle={onMenuToggle}
         onOpenInNewTab={onOpenInNewTab}
@@ -198,7 +204,7 @@ function TreeNodeItem({
       ? commonPrefixPath
       : commonPrefixPath + (commonPrefixPath && !commonPrefixPath.endsWith("/") ? "/" : "") + node.fullPath;
   const matchingPattern = findPatternForFolder(folderAbsPath, groupPatterns);
-  const canRemove = onRemovePattern != null || onRemoveFolder != null;
+  const canRemove = !readOnly && (onRemovePattern != null || onRemoveFolder != null);
 
   const handleRemoveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -263,6 +269,7 @@ function TreeNodeItem({
             activeFileId={activeFileId}
             menuOpenId={menuOpenId}
             otherGroups={otherGroups}
+            readOnly={readOnly}
             onFileSelect={onFileSelect}
             onMenuToggle={onMenuToggle}
             onOpenInNewTab={onOpenInNewTab}
@@ -286,6 +293,7 @@ interface FileNodeItemProps {
   activeFileId: string | null;
   menuOpenId: string | null;
   otherGroups: Group[];
+  readOnly?: boolean;
   onFileSelect: (id: string) => void;
   onMenuToggle: (id: string) => void;
   onOpenInNewTab: (id: string) => void;
@@ -301,6 +309,7 @@ function FileNodeItem({
   activeFileId,
   menuOpenId,
   otherGroups,
+  readOnly,
   onFileSelect,
   onMenuToggle,
   onOpenInNewTab,
@@ -313,11 +322,10 @@ function FileNodeItem({
   return (
     <div className="relative group/file">
       <button
-        className={`flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-left text-sm transition-colors duration-150 ${
-          isActive
+        className={`flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-left text-sm transition-colors duration-150 ${isActive
             ? "bg-gh-bg-active text-gh-text font-semibold"
             : "bg-transparent text-gh-text-secondary hover:bg-gh-bg-hover"
-        }`}
+          }`}
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
         onClick={() => onFileSelect(file.id)}
         title={file.uploaded ? file.name : file.path}
@@ -325,16 +333,18 @@ function FileNodeItem({
         <FileIcon uploaded={file.uploaded} />
         <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{name}</span>
       </button>
-      <FileContextMenu
-        file={file}
-        isOpen={menuOpenId === file.id}
-        otherGroups={otherGroups}
-        onToggle={onMenuToggle}
-        onOpenInNewTab={onOpenInNewTab}
-        onMoveToGroup={onMoveToGroup}
-        onRemove={onRemove}
-        menuRef={menuRef}
-      />
+      {!readOnly && (
+        <FileContextMenu
+          file={file}
+          isOpen={menuOpenId === file.id}
+          otherGroups={otherGroups}
+          onToggle={onMenuToggle}
+          onOpenInNewTab={onOpenInNewTab}
+          onMoveToGroup={onMoveToGroup}
+          onRemove={onRemove}
+          menuRef={menuRef}
+        />
+      )}
     </div>
   );
 }

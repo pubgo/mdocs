@@ -37,20 +37,20 @@ const (
 )
 
 var (
-	target          string
-	port            int
-	bind            string
-	open            bool
-	noOpen          bool
-	restore         string
-	shutdownServer  bool
-	restartServer   bool
-	foreground      bool
-	statusServer    bool
-	watchPatterns   []string
-	unwatchPatterns []string
-	clearBackup      bool
-	jsonOutput       bool
+	target                       string
+	port                         int
+	bind                         string
+	open                         bool
+	noOpen                       bool
+	restore                      string
+	shutdownServer               bool
+	restartServer                bool
+	foreground                   bool
+	statusServer                 bool
+	watchPatterns                []string
+	unwatchPatterns              []string
+	clearBackup                  bool
+	jsonOutput                   bool
 	dangerouslyAllowRemoteAccess bool
 )
 
@@ -136,7 +136,7 @@ Glob Patterns:
   $ mo --unwatch '**/*.md'            Stop watching a pattern
 
 WARNING: --bind with a non-loopback address:
-  Binding to a non-localhost address (e.g. 0.0.0.0) exposes mo to the
+	Binding to a non-loopback address (e.g. 0.0.0.0) exposes mo to the
   network without any authentication. Remote clients can read any file
   accessible by this user, browse the filesystem via glob patterns, and
   shut down the server. A confirmation prompt is shown before starting.`,
@@ -154,7 +154,7 @@ func Execute() {
 func init() {
 	rootCmd.Flags().StringVarP(&target, "target", "t", server.DefaultGroup, "Tab group name")
 	rootCmd.Flags().IntVarP(&port, "port", "p", 6275, "Server port")
-	rootCmd.Flags().StringVarP(&bind, "bind", "b", "localhost", "Bind address (e.g. localhost, 0.0.0.0)")
+	rootCmd.Flags().StringVarP(&bind, "bind", "b", "0.0.0.0", "Bind address (e.g. localhost, 0.0.0.0)")
 	rootCmd.Flags().BoolVar(&open, "open", false, "Always open browser (even when adding to existing group)")
 	rootCmd.Flags().BoolVar(&noOpen, "no-open", false, "Do not open browser automatically")
 	rootCmd.MarkFlagsMutuallyExclusive("open", "no-open")
@@ -321,7 +321,7 @@ func run(cmd *cobra.Command, args []string) error {
 		o := termenv.NewOutput(os.Stderr)
 		c := func(s string) termenv.Style { return o.String(s).Foreground(o.Color("208")) }
 		fmt.Fprintln(os.Stderr, c("SECURITY WARNING:").Bold(),
-			c(fmt.Sprintf("Binding to %s instead of localhost. mo has no authentication -- remote clients can:", bind)))
+			c(fmt.Sprintf("Binding to non-loopback address %s. mo has no authentication -- remote clients can:", bind)))
 		fmt.Fprintln(os.Stderr, c("  - Read any file accessible by this user"))
 		fmt.Fprintln(os.Stderr, c("  - Browse the filesystem via glob patterns"))
 		fmt.Fprintln(os.Stderr, c("  - Shut down or restart the server"))

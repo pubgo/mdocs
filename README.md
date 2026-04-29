@@ -110,8 +110,8 @@ Patterns are resolved to absolute paths before matching, so you can specify eith
 The sidebar supports flat and tree view modes. Flat view shows file names only, while tree view displays the directory hierarchy.
 
 | <img src="images/icons/view-flat.svg" height="16"> Flat | <img src="images/icons/view-tree.svg" height="16"> Tree |
-|------|------|
-| ![Flat view](images/sidebar-flat.png) | ![Tree view](images/sidebar-tree.png) |
+| ------------------------------------------------------- | ------------------------------------------------------- |
+| ![Flat view](images/sidebar-flat.png)                   | ![Tree view](images/sidebar-tree.png)                   |
 
 ### Starting and stopping
 
@@ -208,24 +208,24 @@ $ mo --status --json
 
 ### Flags
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--target` | `-t` | `default` | Group name |
-| `--port` | `-p` | `6275` | Server port |
-| `--bind` | `-b` | `localhost` | Bind address (e.g. `0.0.0.0`) |
-| `--open` | | | Always open browser |
-| `--no-open` | | | Never open browser |
-| `--status` | | | Show all running mo servers |
-| `--watch` | `-w` | | Glob pattern to watch for matching files (repeatable) |
-| `--unwatch` | | | Remove a watched glob pattern (repeatable) |
-| `--shutdown` | | | Shut down the running mo server |
-| `--restart` | | | Restart the running mo server |
-| `--clear` | | | Clear saved session for the specified port |
-| `--foreground` | | | Run mo server in foreground |
-| `--json` | | | Output structured data as JSON to stdout |
+| Flag           | Short | Default   | Description                                           |
+| -------------- | ----- | --------- | ----------------------------------------------------- |
+| `--target`     | `-t`  | `default` | Group name                                            |
+| `--port`       | `-p`  | `6275`    | Server port                                           |
+| `--bind`       | `-b`  | `0.0.0.0` | Bind address (e.g. `localhost`)                       |
+| `--open`       |       |           | Always open browser                                   |
+| `--no-open`    |       |           | Never open browser                                    |
+| `--status`     |       |           | Show all running mo servers                           |
+| `--watch`      | `-w`  |           | Glob pattern to watch for matching files (repeatable) |
+| `--unwatch`    |       |           | Remove a watched glob pattern (repeatable)            |
+| `--shutdown`   |       |           | Shut down the running mo server                       |
+| `--restart`    |       |           | Restart the running mo server                         |
+| `--clear`      |       |           | Clear saved session for the specified port            |
+| `--foreground` |       |           | Run mo server in foreground                           |
+| `--json`       |       |           | Output structured data as JSON to stdout              |
 
 > [!WARNING]
-> Binding to a non-localhost address exposes mo to the network **without any authentication**. Remote clients can read any file accessible by the user, browse the filesystem via glob patterns, and shut down the server. A confirmation prompt is shown when `--bind` is set to a non-loopback address.
+> Binding to a non-loopback address exposes mo to the network **without any authentication**. Remote clients can read any file accessible by the user, browse the filesystem via glob patterns, and shut down the server. A confirmation prompt is shown when `--bind` is set to a non-loopback address.
 
 ## Build
 

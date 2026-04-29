@@ -41,6 +41,7 @@ interface FileItemProps {
   isActive: boolean;
   menuOpenId: string | null;
   otherGroups: Group[];
+  readOnly?: boolean;
   onFileSelect: (id: string) => void;
   onMenuToggle: (id: string) => void;
   onOpenInNewTab: (id: string) => void;
@@ -54,6 +55,7 @@ function FileItem({
   isActive,
   menuOpenId,
   otherGroups,
+  readOnly,
   onFileSelect,
   onMenuToggle,
   onOpenInNewTab,
@@ -64,27 +66,28 @@ function FileItem({
   return (
     <div className="relative group/file">
       <button
-        className={`flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-left text-sm transition-colors duration-150 ${
-          isActive
+        className={`flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-left text-sm transition-colors duration-150 ${isActive
             ? "bg-gh-bg-active text-gh-text font-semibold"
             : "bg-transparent text-gh-text-secondary hover:bg-gh-bg-hover"
-        }`}
+          }`}
         onClick={() => onFileSelect(file.id)}
         title={file.uploaded ? file.name : file.path}
       >
         <FileIcon uploaded={file.uploaded} />
         <span className="overflow-hidden text-ellipsis whitespace-nowrap pr-6">{file.name}</span>
       </button>
-      <FileContextMenu
-        file={file}
-        isOpen={menuOpenId === file.id}
-        otherGroups={otherGroups}
-        onToggle={onMenuToggle}
-        onOpenInNewTab={onOpenInNewTab}
-        onMoveToGroup={onMoveToGroup}
-        onRemove={onRemove}
-        menuRef={menuRef}
-      />
+      {!readOnly && (
+        <FileContextMenu
+          file={file}
+          isOpen={menuOpenId === file.id}
+          otherGroups={otherGroups}
+          onToggle={onMenuToggle}
+          onOpenInNewTab={onOpenInNewTab}
+          onMoveToGroup={onMoveToGroup}
+          onRemove={onRemove}
+          menuRef={menuRef}
+        />
+      )}
     </div>
   );
 }
@@ -117,6 +120,7 @@ interface SidebarProps {
   onFileSelect: (id: string) => void;
   onFilesReorder: (groupName: string, fileIds: string[]) => void;
   viewMode: ViewMode;
+  readOnly?: boolean;
   searchQuery: string | null;
   onSearchQueryChange: (query: string | null) => void;
 }
@@ -131,6 +135,7 @@ export function Sidebar({
   onFileSelect,
   onFilesReorder,
   viewMode,
+  readOnly,
   searchQuery,
   onSearchQueryChange,
 }: SidebarProps) {
@@ -292,6 +297,7 @@ export function Sidebar({
             activeFileId={activeFileId}
             menuOpenId={menuOpenId}
             otherGroups={otherGroups}
+            readOnly={readOnly}
             onFileSelect={onFileSelect}
             onMenuToggle={handleMenuToggle}
             onOpenInNewTab={handleOpenInNewTab}
@@ -301,7 +307,7 @@ export function Sidebar({
             onRemoveFolder={onRemoveFolder}
             menuRef={menuRef}
           />
-        ) : isSearching ? (
+        ) : isSearching || readOnly ? (
           files.map((f) => (
             <FileItem
               key={f.id}
@@ -309,6 +315,7 @@ export function Sidebar({
               isActive={f.id === activeFileId}
               menuOpenId={menuOpenId}
               otherGroups={otherGroups}
+              readOnly={readOnly}
               onFileSelect={onFileSelect}
               onMenuToggle={handleMenuToggle}
               onOpenInNewTab={handleOpenInNewTab}

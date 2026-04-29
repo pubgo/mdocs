@@ -37,33 +37,33 @@ type Graph struct {
 // Captures: group 1 = link text, group 2 = url (path + optional #fragment).
 var markdownLinkRegex = regexp.MustCompile(`\[([^\]]*)\]\(([^)]+)\)`)
 
-// linkWithHeading holds a markdown link plus the heading of its section.
-type linkWithHeading struct {
-	heading  string
-	linkText string
-	hrefPath string
+// LinkWithHeading holds a markdown link plus the heading of its section.
+type LinkWithHeading struct {
+	Heading  string
+	LinkText string
+	HrefPath string
 }
 
-// extractLinksWithHeadings parses content and returns links with their section heading.
+// ExtractLinksWithHeadings parses content and returns links with their section heading.
 // Links before the first H1/H2 have empty heading.
-func extractLinksWithHeadings(content string) []linkWithHeading {
+func ExtractLinksWithHeadings(content string) []LinkWithHeading {
 	if strings.HasPrefix(content, "---") {
 		if i := strings.Index(content[3:], "\n---"); i >= 0 {
 			content = content[3+i+4:]
 		}
 	}
-	matches := headingRegex.FindAllStringSubmatchIndex(content, -1)
-	var out []linkWithHeading
+	matches := HeadingRegex.FindAllStringSubmatchIndex(content, -1)
+	var out []LinkWithHeading
 	if len(matches) == 0 {
 		for _, pair := range ExtractMarkdownLinks(content) {
-			out = append(out, linkWithHeading{linkText: pair[0], hrefPath: pair[1]})
+			out = append(out, LinkWithHeading{LinkText: pair[0], HrefPath: pair[1]})
 		}
 		return out
 	}
 	// Process content before first heading
 	firstSectionEnd := matches[0][0]
 	for _, pair := range ExtractMarkdownLinks(content[:firstSectionEnd]) {
-		out = append(out, linkWithHeading{linkText: pair[0], hrefPath: pair[1]})
+		out = append(out, LinkWithHeading{LinkText: pair[0], HrefPath: pair[1]})
 	}
 	for i, m := range matches {
 		if len(m) < 6 {
@@ -81,10 +81,10 @@ func extractLinksWithHeadings(content string) []linkWithHeading {
 		}
 		section := content[sectionStart:sectionEnd]
 		for _, pair := range ExtractMarkdownLinks(section) {
-			out = append(out, linkWithHeading{
-				heading:  headingText,
-				linkText: pair[0],
-				hrefPath: pair[1],
+			out = append(out, LinkWithHeading{
+				Heading:  headingText,
+				LinkText: pair[0],
+				HrefPath: pair[1],
 			})
 		}
 	}
@@ -146,8 +146,8 @@ func (s *State) BuildGraph() Graph {
 				continue
 			}
 			baseDir := s.getBaseDirForEntry(entry, g.Name)
-			for _, lh := range extractLinksWithHeadings(content) {
-				targetEntry := s.findFileByHrefLocked(baseDir, lh.hrefPath)
+			for _, lh := range ExtractLinksWithHeadings(content) {
+				targetEntry := s.findFileByHrefLocked(baseDir, lh.HrefPath)
 				if targetEntry != nil {
 					targetID := targetEntry.ID
 					key := entry.ID + "->" + targetID
@@ -155,8 +155,8 @@ func (s *State) BuildGraph() Graph {
 						edgeMap[key] = &GraphEdge{
 							From:    entry.ID,
 							To:      targetID,
-							Label:   strings.TrimSpace(lh.linkText),
-							Heading: strings.TrimSpace(lh.heading),
+							Label:   strings.TrimSpace(lh.LinkText),
+							Heading: strings.TrimSpace(lh.Heading),
 						}
 					}
 				}
@@ -266,8 +266,8 @@ type Outline struct {
 	Files []OutlineNode `json:"files"`
 }
 
-// headingRegex matches # or ## at start of line; captures hashes and text. Filter ### in code.
-var headingRegex = regexp.MustCompile(`(?m)^(#{1,2})\s+(.+)$`)
+// HeadingRegex matches # or ## at start of line; captures hashes and text. Filter ### in code.
+var HeadingRegex = regexp.MustCompile(`(?m)^(#{1,2})\s+(.+)$`)
 
 // extractHeadingsWithLinks parses H1/H2 headings and for each heading extracts markdown links
 // from its section (content until the next heading). Resolves links to file IDs in state.
@@ -277,7 +277,7 @@ func (s *State) extractHeadingsWithLinks(content string, baseDir string) []Outli
 			content = content[3+i+4:]
 		}
 	}
-	matches := headingRegex.FindAllStringSubmatchIndex(content, -1)
+	matches := HeadingRegex.FindAllStringSubmatchIndex(content, -1)
 	if len(matches) == 0 {
 		return nil
 	}

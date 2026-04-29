@@ -1,3 +1,5 @@
+import { isStaticMode, getStaticGroups, getStaticFileContent, getStaticGraph, getStaticOutline, getStaticVersion } from "../utils/staticData";
+
 export interface FileEntry {
   name: string;
   id: string;
@@ -40,6 +42,10 @@ export interface LinkGraph {
 }
 
 export async function fetchGraph(): Promise<LinkGraph> {
+  if (isStaticMode()) {
+    const graph = getStaticGraph();
+    if (graph) return graph;
+  }
   const res = await fetch("/_/api/graph");
   if (!res.ok) throw new Error("Failed to fetch graph");
   return res.json();
@@ -70,18 +76,28 @@ export interface Outline {
 }
 
 export async function fetchOutline(): Promise<Outline> {
+  if (isStaticMode()) {
+    const outline = getStaticOutline();
+    if (outline) return outline;
+  }
   const res = await fetch("/_/api/outline");
   if (!res.ok) throw new Error("Failed to fetch outline");
   return res.json();
 }
 
 export async function fetchGroups(): Promise<Group[]> {
+  if (isStaticMode()) return getStaticGroups();
   const res = await fetch("/_/api/groups");
   if (!res.ok) throw new Error("Failed to fetch groups");
   return res.json();
 }
 
 export async function fetchFileContent(id: string): Promise<FileContent> {
+  if (isStaticMode()) {
+    const content = getStaticFileContent(id);
+    if (content) return content;
+    throw new Error("File not found in static data");
+  }
   const res = await fetch(`/_/api/files/${id}/content`);
   if (!res.ok) throw new Error("Failed to fetch file content");
   return res.json();
@@ -141,6 +157,10 @@ export async function restartServer(): Promise<void> {
 }
 
 export async function fetchVersion(): Promise<VersionInfo> {
+  if (isStaticMode()) {
+    const ver = getStaticVersion();
+    if (ver) return ver;
+  }
   const res = await fetch("/_/api/version");
   if (!res.ok) throw new Error("Failed to fetch version");
   return res.json();
@@ -160,6 +180,16 @@ export interface Status {
 }
 
 export async function fetchStatus(): Promise<Status> {
+  if (isStaticMode()) {
+    const ver = getStaticVersion();
+    const groups = getStaticGroups();
+    return {
+      version: ver?.version ?? "",
+      revision: ver?.revision ?? "",
+      pid: 0,
+      groups: groups.map((g) => ({ name: g.name, files: g.files })),
+    };
+  }
   const res = await fetch("/_/api/status");
   if (!res.ok) throw new Error("Failed to fetch status");
   return res.json();

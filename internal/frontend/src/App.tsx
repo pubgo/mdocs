@@ -7,6 +7,7 @@ import { GroupDropdown } from "./components/GroupDropdown";
 import { ViewModeToggle, type ViewMode } from "./components/ViewModeToggle";
 import { SearchToggle } from "./components/SearchToggle";
 import { GlobalSearchModal } from "./components/GlobalSearchModal";
+import type { GlobalSearchSelection } from "./components/GlobalSearchModal";
 import { RestartButton } from "./components/RestartButton";
 import { DropOverlay } from "./components/DropOverlay";
 import { SettingsModal } from "./components/SettingsModal";
@@ -25,15 +26,24 @@ import { captureArticleForMergedPdf, exportMergedPdfFromSnapshots } from "./util
 import { OutlineGraphView } from "./components/OutlineGraphView";
 import { OutlineGravityView } from "./components/OutlineGravityView";
 import { OutlineTreeView } from "./components/OutlineTreeView";
+import { isStaticMode } from "./utils/staticData";
 
-const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
 const WIDTH_STORAGE_KEY = "mo-layout-width";
+const VIEWMODE_STORAGE_KEY = "mo-sidebar-viewmode";
 const PDF_OPEN_FILE_PARAM = "mo_open";
 const PDF_OPEN_FROM_PARAM = "mo_from";
 
 interface PendingPdfOpenRequest {
   fromFileId: string;
   relativePath: string;
+}
+
+interface PendingSearchJumpRequest {
+  requestId: number;
+  fileId: string;
+  lineNumber: number;
+  lineText: string;
+  query: string;
 }
 
 function parsePendingPdfOpen(search: string): PendingPdfOpenRequest | null {
@@ -95,6 +105,9 @@ export function App() {
   });
   const [pendingPdfOpen, setPendingPdfOpen] = useState<PendingPdfOpenRequest | null>(() =>
     parsePendingPdfOpen(window.location.search),
+  );
+  const [pendingSearchJump, setPendingSearchJump] = useState<PendingSearchJumpRequest | null>(
+    null,
   );
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
 
@@ -268,7 +281,8 @@ export function App() {
 
   const { isDragging } = useFileDrop(activeGroup);
 
-  const currentViewMode: ViewMode = viewModes[activeGroup] ?? "flat";
+  const defaultViewMode: ViewMode = isStaticMode() ? "tree" : "flat";
+  const currentViewMode: ViewMode = viewModes[activeGroup] ?? defaultViewMode;
 
   const exportFiles = useMemo(() => {
     const baseFiles = currentViewMode === "tree"
@@ -309,19 +323,33 @@ export function App() {
     setGlobalSearchOpen(true);
   }, []);
 
-  const handleGlobalSearchSelect = useCallback((groupName: string, fileId: string) => {
+  const handleGlobalSearchSelect = useCallback((selection: GlobalSearchSelection) => {
     setShowGraph(false);
-    setActiveGroup(groupName);
-    setActiveFileId(fileId);
+    setActiveGroup(selection.groupName);
+    setActiveFileId(selection.fileId);
+    setPendingSearchJump({
+      requestId: Date.now(),
+      fileId: selection.fileId,
+      lineNumber: selection.lineNumber,
+      lineText: selection.lineText,
+      query: selection.query,
+    });
   }, []);
 
   const handleGroupChange = (name: string) => {
+    setPendingSearchJump(null);
     setActiveGroup(name);
     setActiveFileId(null);
     window.history.pushState(null, "", groupToPath(name));
   };
 
   const handleFileOpened = useCallback((fileId: string) => {
+    setPendingSearchJump(null);
+    setActiveFileId(fileId);
+  }, []);
+
+  const handleFileSelect = useCallback((fileId: string) => {
+    setPendingSearchJump(null);
     setActiveFileId(fileId);
   }, []);
 
@@ -601,9 +629,10 @@ export function App() {
             groupPatterns={groupPatterns}
             onRemovePattern={handleRemovePattern}
             onRemoveFolder={handleRemoveFolder}
-            onFileSelect={setActiveFileId}
+            onFileSelect={handleFileSelect}
             onFilesReorder={handleFilesReorder}
             viewMode={currentViewMode}
+            readOnly={isStaticMode()}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
           />
@@ -632,6 +661,10 @@ export function App() {
                 onTocToggle={() => setTocOpen((v) => !v)}
                 onRemoveFile={handleRemoveFile}
                 isWide={isWide}
+                searchJumpRequest={
+                  pendingSearchJump?.fileId === activeFileId ? pendingSearchJump : null
+                }
+                onSearchJumpHandled={() => setPendingSearchJump(null)}
               />
             ) : (
               <div className="flex items-center justify-center h-50 text-gh-text-secondary text-sm">
@@ -655,6 +688,7 @@ export function App() {
         onSelect={handleGlobalSearchSelect}
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {!isStaticMode() && isDragging && <DropOverlay />}
       <RestartButton />
       {isDragging && <DropOverlay />}
     </div>

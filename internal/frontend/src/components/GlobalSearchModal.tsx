@@ -11,7 +11,15 @@ interface GlobalSearchModalProps {
     isOpen: boolean;
     groups: Group[];
     onClose: () => void;
-    onSelect: (groupName: string, fileId: string) => void;
+    onSelect: (selection: GlobalSearchSelection) => void;
+}
+
+export interface GlobalSearchSelection {
+    groupName: string;
+    fileId: string;
+    lineNumber: number;
+    lineText: string;
+    query: string;
 }
 
 function HighlightedPreview({ hit }: { hit: FullTextSearchHit }) {
@@ -113,10 +121,17 @@ export function GlobalSearchModal({ isOpen, groups, onClose, onSelect }: GlobalS
 
     const handleSelect = useCallback(
         (hit: FullTextSearchHit) => {
-            onSelect(hit.groupName, hit.fileId);
+            const normalizedQuery = query.trim();
+            onSelect({
+                groupName: hit.groupName,
+                fileId: hit.fileId,
+                lineNumber: hit.lineNumber,
+                lineText: hit.lineText,
+                query: normalizedQuery,
+            });
             onClose();
         },
-        [onClose, onSelect],
+        [onClose, onSelect, query],
     );
 
     if (!isOpen) return null;

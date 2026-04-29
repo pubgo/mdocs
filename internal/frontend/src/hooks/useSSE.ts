@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { isStaticMode } from "../utils/staticData";
 
 interface SSECallbacks {
   onUpdate: () => void;
@@ -12,6 +13,9 @@ export function useSSE(callbacks: SSECallbacks) {
   });
 
   useEffect(() => {
+    // No live-reload in static mode
+    if (isStaticMode()) return;
+
     let disposed = false;
     let es: EventSource | null = null;
     let retryDelay = 1000;

@@ -18,7 +18,9 @@ import { TocToggle } from "./TocToggle";
 import { CopyButton } from "./CopyButton";
 import { PdfExportButton } from "./PdfExportButton";
 import { RemoveButton } from "./RemoveButton";
+import { BacklinksPanel } from "./BacklinksPanel";
 import { resolveLink, resolveImageSrc, extractLanguage } from "../utils/resolve";
+import { findBestSearchTarget } from "../utils/searchJump";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { stripMdxSyntax } from "../utils/mdx";
 import { transformMarkdownForMo } from "../utils/markdownEnhance";
@@ -158,6 +160,13 @@ interface MarkdownViewerProps {
   onTocToggle: () => void;
   onRemoveFile: () => void;
   isWide: boolean;
+  searchJumpRequest?: {
+    requestId: number;
+    lineNumber: number;
+    lineText: string;
+    query: string;
+  } | null;
+  onSearchJumpHandled?: () => void;
 }
 
 function getMermaidTheme(): "dark" | "default" {
@@ -1640,6 +1649,8 @@ export function MarkdownViewer({
   onTocToggle,
   onRemoveFile,
   isWide,
+  searchJumpRequest,
+  onSearchJumpHandled,
 }: MarkdownViewerProps) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -1673,11 +1684,20 @@ export function MarkdownViewer({
   }, [fileId, revision]);
 
   const handleLinkClick = useCallback(
-    async (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    async (e: React.MouseEvent<HTMLAnchorElement>, href: string, anchor: string | null) => {
       e.preventDefault();
       try {
         const entry = await openRelativeFile(fileId, href);
         onFileOpened(entry.id);
+        if (anchor) {
+          // Wait for content to render, then scroll to anchor
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              const el = document.getElementById(anchor);
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }, 300);
+          });
+        }
       } catch {
         // fallback: do nothing
       }
@@ -1733,7 +1753,7 @@ export function MarkdownViewer({
             );
           case "markdown":
             return (
-              <a href={href} onClick={(e) => handleLinkClick(e, resolved.hrefPath)} {...props}>
+              <a href={href} onClick={(e) => handleLinkClick(e, resolved.hrefPath, resolved.anchor)} {...props}>
                 {children}
               </a>
             );
@@ -1814,6 +1834,51 @@ export function MarkdownViewer({
     }
   }, [loading, renderedContent]);
 
+  useEffect(() => {
+    if (!searchJumpRequest) return;
+    setIsRawView(false);
+  }, [searchJumpRequest]);
+
+  useEffect(() => {
+    if (!searchJumpRequest || loading || isRawView) return;
+
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+
+    const jump = () => {
+      if (cancelled) return;
+
+      const article = articleRef.current;
+      if (!article) {
+        onSearchJumpHandled?.();
+        return;
+      }
+
+      const target = findBestSearchTarget(
+        article,
+        searchJumpRequest.lineText,
+        searchJumpRequest.query,
+      );
+
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      onSearchJumpHandled?.();
+    };
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(jump);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isRawView, loading, onSearchJumpHandled, renderedContent, searchJumpRequest]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-50 text-gh-text-secondary text-sm">
@@ -1830,6 +1895,7 @@ export function MarkdownViewer({
         className={`markdown-body min-w-0 flex-1${isWide ? " markdown-body--wide" : ""}`}
       >
         {renderedContent}
+        <BacklinksPanel fileId={fileId} />
       </article>
       <div className="shrink-0 sticky top-0 self-start flex flex-col gap-2 -mr-4 -mt-4">
         <TocToggle isTocOpen={isTocOpen} onToggle={onTocToggle} />
