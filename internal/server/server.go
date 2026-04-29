@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -76,9 +76,9 @@ type State struct {
 	patterns    []*GlobPattern
 	watchedDirs map[string]int // directory → reference count
 
-	backupCh     chan struct{}       // dirty signal (buffered, size 1)
-	backupSaveFn func(RestoreData)  // backup write callback
-	backupDone   chan struct{}       // closed when backupLoop exits
+	backupCh     chan struct{}     // dirty signal (buffered, size 1)
+	backupSaveFn func(RestoreData) // backup write callback
+	backupDone   chan struct{}     // closed when backupLoop exits
 }
 
 func NewState(ctx context.Context) *State {
@@ -1010,8 +1010,8 @@ func handleAddFile(state *State) http.HandlerFunc {
 }
 
 func handleUploadFile(state *State) http.HandlerFunc {
-	const maxRequestSize = 12 << 20  // 12MB (headroom for JSON envelope)
-	const maxContentSize = 10 << 20  // 10MB
+	const maxRequestSize = 12 << 20 // 12MB (headroom for JSON envelope)
+	const maxContentSize = 10 << 20 // 10MB
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxRequestSize)
 		var req uploadFileRequest
@@ -1214,8 +1214,30 @@ func handleOpenFile(state *State) http.HandlerFunc {
 		absPath = filepath.Clean(absPath)
 
 		if _, err := os.Stat(absPath); err != nil {
-			http.Error(w, fmt.Sprintf("file not found: %s", absPath), http.StatusNotFound)
-			return
+			// If the relative path didn't resolve from the file's directory,
+			// walk up parent directories to find the file. This handles
+			// root-relative paths like "/docs/foo.md" written in files that
+			// live in subdirectories.
+			found := false
+			dir := filepath.Dir(entry.Path)
+			for range 32 { // safety limit
+				parent := filepath.Dir(dir)
+				if parent == dir {
+					break // reached filesystem root
+				}
+				candidate := filepath.Join(parent, req.Path)
+				candidate = filepath.Clean(candidate)
+				if _, statErr := os.Stat(candidate); statErr == nil {
+					absPath = candidate
+					found = true
+					break
+				}
+				dir = parent
+			}
+			if !found {
+				http.Error(w, fmt.Sprintf("file not found: %s", absPath), http.StatusNotFound)
+				return
+			}
 		}
 
 		groupName := state.FindGroupForFile(req.FileID)

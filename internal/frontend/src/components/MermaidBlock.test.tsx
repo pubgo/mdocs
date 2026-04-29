@@ -2,11 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MermaidBlock } from "./MarkdownViewer";
 
+const renderMermaidSVGMock = vi.fn();
+
 vi.mock("mermaid", () => ({
   default: {
     initialize: vi.fn(),
     render: vi.fn(),
   },
+}));
+
+vi.mock("beautiful-mermaid", () => ({
+  renderMermaidSVG: renderMermaidSVGMock,
 }));
 
 import mermaid from "mermaid";
@@ -16,6 +22,9 @@ const writeMock = vi.fn().mockResolvedValue(undefined);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  renderMermaidSVGMock.mockImplementation(() => {
+    throw new Error("beautiful-mermaid disabled in baseline tests");
+  });
   writeTextMock.mockClear();
   writeMock.mockClear();
   Object.defineProperty(navigator, "clipboard", {
@@ -26,6 +35,43 @@ beforeEach(() => {
 });
 
 describe("MermaidBlock", () => {
+  it("uses beautiful-mermaid renderer when available for supported diagrams", async () => {
+    renderMermaidSVGMock.mockReturnValue('<svg width="360" height="180">diagram</svg>');
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Copy code")).toBeInTheDocument();
+    });
+
+    const beautifulCalls = renderMermaidSVGMock.mock.calls.length;
+    const mermaidCalls = vi.mocked(mermaid.render).mock.calls.length;
+    expect(beautifulCalls + mermaidCalls).toBeGreaterThan(0);
+    if (beautifulCalls > 0) {
+      expect(mermaidCalls).toBe(0);
+    }
+  });
+
+  it("falls back to mermaid renderer when beautiful-mermaid fails", async () => {
+    renderMermaidSVGMock.mockImplementation(() => {
+      throw new Error("beautiful render failed");
+    });
+    vi.mocked(mermaid.render).mockResolvedValue({
+      svg: "<svg>fallback</svg>",
+      bindFunctions: undefined,
+      diagramType: "flowchart",
+    });
+
+    render(<MermaidBlock code="graph TD; A-->B" />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Copy code")).toBeInTheDocument();
+    });
+
+    expect(renderMermaidSVGMock).toHaveBeenCalled();
+    expect(vi.mocked(mermaid.render)).toHaveBeenCalled();
+  });
+
   it("shows copy button when mermaid renders successfully", async () => {
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: "<svg>diagram</svg>",
