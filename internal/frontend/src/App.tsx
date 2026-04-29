@@ -688,8 +688,9 @@ export function App() {
         onSelect={handleGlobalSearchSelect}
       />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {!isStaticMode() && <RestartButton />}
       {!isStaticMode() && isDragging && <DropOverlay />}
+      <RestartButton />
+      {isDragging && <DropOverlay />}
     </div>
   );
 }
